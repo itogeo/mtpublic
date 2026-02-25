@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Montana Public Land Access</title>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Token Modal -->
+<div id="token-modal" class="modal">
+    <div class="modal-content">
+        <h2>Montana Public Land Access Map</h2>
+        <p>Enter your Mapbox access token to load the map.</p>
+        <input type="text" id="token-input" placeholder="pk.eyJ1Ijo...">
+        <button id="token-submit">Load Map</button>
+        <p class="hint">Get a free token at <a href="https://account.mapbox.com" target="_blank">account.mapbox.com</a></p>
+    </div>
+</div>
+
+<!-- Sidebar -->
+<div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+        <h1>MT Public Land Access</h1>
+        <p class="subtitle">County Road Easement Analysis</p>
+        <button id="sidebar-toggle" class="toggle-btn" title="Collapse sidebar">&laquo;</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="section" id="stats-section">
+        <div class="stats-grid">
+            <div class="stat">
+                <span class="stat-value" id="stat-total">--</span>
+                <span class="stat-label">Total</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="stat-confirmed">--</span>
+                <span class="stat-label">Confirmed</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="stat-nearmiss">--</span>
+                <span class="stat-label">Near-Miss</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="stat-visible">--</span>
+                <span class="stat-label">Visible</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="section">
+        <h3>Filters</h3>
+
+        <!-- Status -->
+        <div class="filter-group">
+            <label class="filter-label">Status</label>
+            <div class="checkbox-group">
+                <label><input type="checkbox" id="filter-confirmed" checked> Confirmed Access</label>
+                <label><input type="checkbox" id="filter-nearmiss" checked> Near-Miss</label>
+            </div>
+        </div>
+
+        <!-- Land Type -->
+        <div class="filter-group">
+            <label class="filter-label">Land Type</label>
+            <div class="checkbox-group" id="land-type-filters">
+                <label><input type="checkbox" data-category="BLM" checked> <span class="dot blm"></span> BLM</label>
+                <label><input type="checkbox" data-category="USFS" checked> <span class="dot usfs"></span> USFS</label>
+                <label><input type="checkbox" data-category="STATE" checked> <span class="dot state"></span> State Trust</label>
+                <label><input type="checkbox" data-category="FWP" checked> <span class="dot fwp"></span> FWP / Wildlife</label>
+                <label><input type="checkbox" data-category="OTHER" checked> <span class="dot other"></span> Other</label>
+            </div>
+        </div>
+
+        <!-- Score Range -->
+        <div class="filter-group">
+            <label class="filter-label">Min Score: <span id="score-value">0</span></label>
+            <input type="range" id="filter-score" min="0" max="100" value="0" step="5">
+        </div>
+
+        <!-- Gap Range -->
+        <div class="filter-group">
+            <label class="filter-label">Max Gap: <span id="gap-value">100</span> ft</label>
+            <input type="range" id="filter-gap" min="-30" max="100" value="100" step="5">
+        </div>
+
+        <!-- County -->
+        <div class="filter-group">
+            <label class="filter-label">County</label>
+            <select id="filter-county">
+                <option value="">All Counties</option>
+            </select>
+        </div>
+
+        <button id="reset-filters" class="reset-btn">Reset Filters</button>
+    </div>
+
+    <!-- Legend -->
+    <div class="section">
+        <h3>Legend</h3>
+        <div class="legend">
+            <div class="legend-item"><span class="dot blm"></span> BLM</div>
+            <div class="legend-item"><span class="dot usfs"></span> USFS / Forest Service</div>
+            <div class="legend-item"><span class="dot state"></span> State Trust / DNRC</div>
+            <div class="legend-item"><span class="dot fwp"></span> FWP / Wildlife</div>
+            <div class="legend-item"><span class="dot other"></span> Other Public</div>
+        </div>
+        <div class="legend-note">
+            Circle size = opportunity score<br>
+            Solid = confirmed | Faded = near-miss
+        </div>
+    </div>
+
+    <!-- Base Map -->
+    <div class="section">
+        <h3>Base Map</h3>
+        <div class="radio-group">
+            <label><input type="radio" name="basemap" value="outdoors" checked> Outdoors</label>
+            <label><input type="radio" name="basemap" value="satellite-streets"> Satellite</label>
+            <label><input type="radio" name="basemap" value="light"> Light</label>
+        </div>
+    </div>
+
+    <div class="section footer">
+        <p>MCA 7-14-2112: 60 ft statutory county road width (30 ft from centerline)</p>
+    </div>
+</div>
+
+<!-- Sidebar collapsed toggle -->
+<button id="sidebar-open" class="open-btn" style="display:none;" title="Open sidebar">&raquo;</button>
+
+<!-- Map -->
+<div id="map"></div>
+
+<!-- Loading indicator -->
+<div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading 15,000+ opportunities...</p>
+</div>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
