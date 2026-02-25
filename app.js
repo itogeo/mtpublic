@@ -1,43 +1,33 @@
 // Montana Public Land Access — Mapbox GL JS
-// Layers: ALL public lands (statewide), county roads (near public land), opportunity points
+// Public lands: Official MT State Library ArcGIS tile service
+// Roads + opportunities: Local GeoJSON from analysis pipeline
 
-const LAND_COLORS = {
-    BLM:           '#E8A838',
-    USFS:          '#2D8B56',
-    STATE:         '#4A90D9',
-    FWP:           '#9B6BC4',
-    USFWS:         '#C06080',
-    NPS:           '#5BA55B',
-    BOR:           '#6AAFC4',
-    DOD:           '#8B7D6B',
-    LOCAL:         '#A0A0A0',
-    MDT:           '#808080',
-    USACE:         '#7B8FA3',
-    CORRECTIONS:   '#9E8B7E',
-    UNIVERSITY:    '#D4A55A',
-    USDA:          '#7EA862',
-    OTHER_FEDERAL: '#9E9E7E',
-};
+const MT_LANDS_TILE_URL =
+    'https://gisservicemt.gov/arcgis/rest/services/MSDI_Framework/PublicLands/MapServer/export' +
+    '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512' +
+    '&format=png32&transparent=true&f=image';
 
 const LAND_LABELS = {
-    BLM:           'Bureau of Land Management',
-    USFS:          'US Forest Service',
-    STATE:         'State Trust / DNRC',
-    FWP:           'Fish, Wildlife & Parks',
-    USFWS:         'US Fish & Wildlife',
-    NPS:           'National Park Service',
-    BOR:           'Bureau of Reclamation',
-    DOD:           'Dept. of Defense',
-    LOCAL:         'Local Government',
-    MDT:           'MT Dept. of Transportation',
-    USACE:         'Army Corps of Engineers',
-    CORRECTIONS:   'Corrections',
-    UNIVERSITY:    'University System',
-    USDA:          'USDA',
-    OTHER_FEDERAL: 'Other Federal',
+    BLM:   'Bureau of Land Management',
+    USFS:  'US Forest Service',
+    STATE: 'State Trust / DNRC',
+    FWP:   'Fish, Wildlife & Parks',
+    USFWS: 'US Fish & Wildlife',
+    NPS:   'National Park Service',
+    BOR:   'Bureau of Reclamation',
+    DOD:   'Dept. of Defense',
+    LOCAL: 'Local Government',
 };
 
-// For filtering opportunities
+const OPP_COLORS = {
+    BLM:   '#F59E0B',
+    USFS:  '#22C55E',
+    STATE: '#3B82F6',
+    FWP:   '#A855F7',
+    USFWS: '#EC4899',
+    NPS:   '#22C55E',
+};
+
 const OPP_CATEGORY_MAP = {
     'BLM': 'BLM', 'USFS': 'USFS', 'STATE': 'STATE',
     'FWP': 'FWP', 'USFWS': 'FWP', 'NPS': 'OTHER',
@@ -50,7 +40,6 @@ const OPP_CATEGORY_MAP = {
 let map;
 let allOpportunities = null;
 let allRoads = null;
-let allLands = null;
 
 // ── Token ──
 function initToken() {
@@ -101,15 +90,11 @@ function updateLoadingText(msg) {
 // ── Load data ──
 async function loadAllData() {
     try {
-        updateLoadingText('Loading public land boundaries (31,000 parcels)...');
-        const landsResp = await fetch('data/lands.geojson');
-        allLands = await landsResp.json();
-
-        updateLoadingText('Loading county roads (13,000 segments)...');
+        updateLoadingText('Loading county roads...');
         const roadsResp = await fetch('data/roads.geojson');
         allRoads = await roadsResp.json();
 
-        updateLoadingText('Loading access opportunities (15,000 points)...');
+        updateLoadingText('Loading access opportunities...');
         const oppsResp = await fetch('data/opportunities.geojson');
         allOpportunities = await oppsResp.json();
         allOpportunities.features.forEach(f => {
@@ -123,6 +108,7 @@ async function loadAllData() {
         bindFilters();
         bindSidebar();
         bindBasemap();
+        bindLandToggle();
 
         document.getElementById('loading').classList.add('hidden');
     } catch (err) {
@@ -130,84 +116,41 @@ async function loadAllData() {
     }
 }
 
-// ── Build color match expression for land categories ──
-function landColorExpr() {
-    const expr = ['match', ['get', 'land_category']];
-    for (const [cat, color] of Object.entries(LAND_COLORS)) {
-        expr.push(cat, color);
-    }
-    expr.push('#888'); // fallback
-    return expr;
+function oppColorExpr() {
+    return [
+        'match', ['get', 'land_category'],
+        'BLM',   OPP_COLORS.BLM,
+        'USFS',  OPP_COLORS.USFS,
+        'STATE', OPP_COLORS.STATE,
+        'FWP',   OPP_COLORS.FWP,
+        'USFWS', OPP_COLORS.USFWS,
+        'NPS',   OPP_COLORS.NPS,
+        '#94a3b8',
+    ];
 }
 
 // ── Layers ──
 function addAllLayers() {
-    // === 1. ALL PUBLIC LANDS (statewide context) ===
-    map.addSource('lands', { type: 'geojson', data: allLands });
-
-    map.addLayer({
-        id: 'land-fill',
-        type: 'fill',
-        source: 'lands',
-        paint: {
-            'fill-color': landColorExpr(),
-            'fill-opacity': [
-                'interpolate', ['linear'], ['zoom'],
-                5, 0.25,
-                8, 0.35,
-                12, 0.4,
-                15, 0.45,
-            ],
-        },
+    // === 1. OFFICIAL MT PUBLIC LANDS (raster tiles from state ArcGIS) ===
+    map.addSource('mt-public-lands', {
+        type: 'raster',
+        tiles: [MT_LANDS_TILE_URL],
+        tileSize: 512,
+        attribution: 'MT State Library / MSDI',
     });
 
     map.addLayer({
-        id: 'land-outline',
-        type: 'line',
-        source: 'lands',
+        id: 'mt-lands-tiles',
+        type: 'raster',
+        source: 'mt-public-lands',
         paint: {
-            'line-color': landColorExpr(),
-            'line-width': [
-                'interpolate', ['linear'], ['zoom'],
-                5, 0.3,
-                8, 0.8,
-                12, 1.5,
-                15, 2,
-            ],
-            'line-opacity': [
-                'interpolate', ['linear'], ['zoom'],
-                5, 0.4,
-                8, 0.6,
-                12, 0.7,
-            ],
+            'raster-opacity': 0.65,
         },
     });
 
-    // Land labels (show at higher zoom)
-    map.addLayer({
-        id: 'land-labels',
-        type: 'symbol',
-        source: 'lands',
-        minzoom: 10,
-        layout: {
-            'text-field': ['get', 'land_category'],
-            'text-size': 10,
-            'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
-            'text-allow-overlap': false,
-            'text-ignore-placement': false,
-        },
-        paint: {
-            'text-color': landColorExpr(),
-            'text-halo-color': 'rgba(0,0,0,0.7)',
-            'text-halo-width': 1,
-            'text-opacity': 0.8,
-        },
-    });
-
-    // === 2. COUNTY ROADS (near public land) ===
+    // === 2. COUNTY ROADS ===
     map.addSource('roads', { type: 'geojson', data: allRoads });
 
-    // Road casing (dark edge)
     map.addLayer({
         id: 'road-casing',
         type: 'line',
@@ -221,31 +164,29 @@ function addAllLayers() {
             ],
             'line-opacity': [
                 'interpolate', ['linear'], ['zoom'],
-                6, 0.2, 10, 0.5, 14, 0.6,
+                6, 0.15, 10, 0.4, 14, 0.5,
             ],
         },
     });
 
-    // Road fill (white/light)
     map.addLayer({
         id: 'road-lines',
         type: 'line',
         source: 'roads',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
-            'line-color': '#f1f5f9',
+            'line-color': '#f8fafc',
             'line-width': [
                 'interpolate', ['linear'], ['zoom'],
                 6, 0.3, 10, 1.5, 14, 4, 17, 8,
             ],
             'line-opacity': [
                 'interpolate', ['linear'], ['zoom'],
-                6, 0.3, 10, 0.6, 14, 0.8,
+                6, 0.25, 10, 0.5, 14, 0.7,
             ],
         },
     });
 
-    // Road labels at high zoom
     map.addLayer({
         id: 'road-labels',
         type: 'symbol',
@@ -259,7 +200,7 @@ function addAllLayers() {
             'text-allow-overlap': false,
         },
         paint: {
-            'text-color': '#cbd5e1',
+            'text-color': '#e2e8f0',
             'text-halo-color': 'rgba(15,23,42,0.8)',
             'text-halo-width': 1.5,
         },
@@ -274,7 +215,6 @@ function addAllLayers() {
         clusterRadius: 40,
     });
 
-    // Clusters
     map.addLayer({
         id: 'clusters',
         type: 'circle',
@@ -307,7 +247,6 @@ function addAllLayers() {
         paint: { 'text-color': '#fff' },
     });
 
-    // Point glow
     map.addLayer({
         id: 'point-glow',
         type: 'circle',
@@ -324,7 +263,6 @@ function addAllLayers() {
         },
     });
 
-    // Point core
     map.addLayer({
         id: 'points',
         type: 'circle',
@@ -353,26 +291,12 @@ function addAllLayers() {
     // ── Click handlers ──
     map.on('click', 'clusters', clusterClick);
     map.on('click', 'points', pointClick);
-    map.on('click', 'land-fill', landClick);
     map.on('click', 'road-lines', roadClick);
 
     ['points', 'clusters'].forEach(l => {
         map.on('mouseenter', l, () => map.getCanvas().style.cursor = 'pointer');
         map.on('mouseleave', l, () => map.getCanvas().style.cursor = '');
     });
-}
-
-function oppColorExpr() {
-    return [
-        'match', ['get', 'land_category'],
-        'BLM',   LAND_COLORS.BLM,
-        'USFS',  LAND_COLORS.USFS,
-        'STATE', LAND_COLORS.STATE,
-        'FWP',   LAND_COLORS.FWP,
-        'USFWS', LAND_COLORS.USFWS,
-        'NPS',   LAND_COLORS.NPS,
-        '#94a3b8',
-    ];
 }
 
 // ── Click: cluster ──
@@ -438,33 +362,6 @@ function pointClick(e) {
         .addTo(map);
 }
 
-// ── Click: public land polygon ──
-function landClick(e) {
-    if (!e.features.length) return;
-    // Skip if a point was also clicked
-    if (map.queryRenderedFeatures(e.point, { layers: ['points'] }).length) return;
-
-    const p = e.features[0].properties;
-    const acres = p.area_acres ? Number(p.area_acres).toLocaleString() : '--';
-    const catClass = (p.land_category || 'other').toLowerCase();
-    const label = LAND_LABELS[p.land_category] || p.land_name || p.land_category;
-
-    new mapboxgl.Popup({ maxWidth: '260px', offset: 10 })
-        .setLngLat(e.lngLat)
-        .setHTML(`
-            <div class="popup">
-                <div class="popup-top ${catClass}">
-                    <div class="popup-title">${label}</div>
-                    <div class="popup-county">${p.land_category}</div>
-                </div>
-                <div class="popup-body">
-                    <div class="popup-row"><span class="label">Acreage</span><span class="value">${acres} ac</span></div>
-                </div>
-            </div>
-        `)
-        .addTo(map);
-}
-
 // ── Click: road line ──
 function roadClick(e) {
     if (!e.features.length) return;
@@ -490,7 +387,7 @@ function roadClick(e) {
         .addTo(map);
 }
 
-// ── Filtering (opportunities + linked roads; lands stay visible) ──
+// ── Filtering ──
 function matchesFilter(p) {
     const showConfirmed = document.getElementById('filter-confirmed').checked;
     const showNearmiss = document.getElementById('filter-nearmiss').checked;
@@ -520,7 +417,6 @@ function applyFilters() {
     };
     map.getSource('opportunities').setData(filtered);
 
-    // Filter roads to match visible opportunities
     const activeRoadIdxs = new Set();
     filtered.features.forEach(f => {
         if (f.properties.road_idx != null) activeRoadIdxs.add(f.properties.road_idx);
@@ -530,7 +426,6 @@ function applyFilters() {
         features: allRoads.features.filter(f => activeRoadIdxs.has(f.properties.road_idx)),
     });
 
-    // Lands always stay visible (full statewide context) — no filtering
     updateVisibleCount(filtered.features.length);
 }
 
@@ -563,6 +458,17 @@ function bindFilters() {
         map.getSource('opportunities').setData(allOpportunities);
         map.getSource('roads').setData(allRoads);
         updateVisibleCount(allOpportunities.features.length);
+    });
+}
+
+// ── Land opacity toggle ──
+function bindLandToggle() {
+    const slider = document.getElementById('land-opacity');
+    if (!slider) return;
+    slider.addEventListener('input', () => {
+        const val = Number(slider.value) / 100;
+        document.getElementById('land-opacity-value').textContent = slider.value + '%';
+        map.setPaintProperty('mt-lands-tiles', 'raster-opacity', val);
     });
 }
 

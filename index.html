@@ -95,23 +95,23 @@
         <button id="reset-filters" class="reset-btn">Reset All Filters</button>
     </div>
 
-    <!-- Legend -->
+    <!-- Public Lands Layer -->
     <div class="section">
-        <h3>Public Lands</h3>
-        <div class="legend">
-            <div class="legend-item"><span class="swatch blm"></span> BLM</div>
-            <div class="legend-item"><span class="swatch usfs"></span> US Forest Service</div>
-            <div class="legend-item"><span class="swatch state"></span> State Trust / DNRC</div>
-            <div class="legend-item"><span class="swatch fwp"></span> FWP / Wildlife</div>
-            <div class="legend-item"><span class="swatch usfws"></span> US Fish & Wildlife</div>
-            <div class="legend-item"><span class="swatch nps"></span> National Park Service</div>
-            <div class="legend-item"><span class="swatch bor"></span> Bureau of Reclamation</div>
-            <div class="legend-item"><span class="swatch dod"></span> Dept. of Defense</div>
-            <div class="legend-item"><span class="swatch local"></span> Local Government</div>
+        <h3>Public Lands (Official MT State Library)</h3>
+        <div class="filter-group">
+            <label class="filter-label">Opacity: <strong id="land-opacity-value">65%</strong></label>
+            <input type="range" id="land-opacity" min="0" max="100" value="65" step="5">
         </div>
-        <h3 style="margin-top:0.6rem">Map Key</h3>
         <div class="legend-note">
-            <strong>Colored fills</strong> = public land boundaries (statewide)<br>
+            Land boundaries rendered from the official Montana MSDI Public Lands service. Colors match the state's standard land ownership map.
+        </div>
+    </div>
+
+    <!-- Map Key -->
+    <div class="section">
+        <h3>Map Key</h3>
+        <div class="legend-note">
+            <strong>Colored fills</strong> = official MT public land boundaries<br>
             <strong>White lines</strong> = county roads near public land<br>
             <strong>Colored dots</strong> = access opportunity points<br>
             Larger dot = higher score<br>
