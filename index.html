@@ -95,15 +95,20 @@
         <button id="reset-filters" class="reset-btn">Reset All Filters</button>
     </div>
 
-    <!-- Public Lands Layer -->
+    <!-- Land Layers -->
     <div class="section">
-        <h3>Public Lands (Official MT State Library)</h3>
-        <div class="filter-group">
+        <h3>Land Layers</h3>
+        <div class="checkbox-group">
+            <label><input type="checkbox" class="layer-toggle" data-layer="msdi" checked> MSDI Public Lands</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="dnrc_access"> DNRC Trust Land Access</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="dnrc_tracts"> DNRC Surface Tracts</label>
+        </div>
+        <div class="filter-group" style="margin-top:0.5rem">
             <label class="filter-label">Opacity: <strong id="land-opacity-value">65%</strong></label>
             <input type="range" id="land-opacity" min="0" max="100" value="65" step="5">
         </div>
         <div class="legend-note">
-            Land boundaries rendered from the official Montana MSDI Public Lands service. Colors match the state's standard land ownership map.
+            Tile layers streamed from official MT State Library and DNRC ArcGIS services.
         </div>
     </div>
 

@@ -2,10 +2,23 @@
 // Public lands: Official MT State Library ArcGIS tile service
 // Roads + opportunities: Local GeoJSON from analysis pipeline
 
-const MT_LANDS_TILE_URL =
-    'https://gisservicemt.gov/arcgis/rest/services/MSDI_Framework/PublicLands/MapServer/export' +
-    '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512' +
-    '&format=png32&transparent=true&f=image';
+const TILE_SERVICES = {
+    msdi: {
+        label: 'MSDI Public Lands',
+        url: 'https://gisservicemt.gov/arcgis/rest/services/MSDI_Framework/PublicLands/MapServer/export' +
+             '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image',
+    },
+    dnrc_access: {
+        label: 'DNRC Trust Land Access',
+        url: 'https://gis.dnrc.mt.gov/arcgis/rest/services/TLMD/AccessMap/MapServer/export' +
+             '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image',
+    },
+    dnrc_tracts: {
+        label: 'DNRC Surface Tracts',
+        url: 'https://gis.dnrc.mt.gov/arcgis/rest/services/TLMD/TLMS/MapServer/export' +
+             '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image',
+    },
+};
 
 const LAND_LABELS = {
     BLM:   'Bureau of Land Management',
@@ -131,22 +144,23 @@ function oppColorExpr() {
 
 // ── Layers ──
 function addAllLayers() {
-    // === 1. OFFICIAL MT PUBLIC LANDS (raster tiles from state ArcGIS) ===
-    map.addSource('mt-public-lands', {
-        type: 'raster',
-        tiles: [MT_LANDS_TILE_URL],
-        tileSize: 512,
-        attribution: 'MT State Library / MSDI',
-    });
+    // === 1. OFFICIAL MT TILE LAYERS ===
+    for (const [key, svc] of Object.entries(TILE_SERVICES)) {
+        map.addSource('tiles-' + key, {
+            type: 'raster',
+            tiles: [svc.url],
+            tileSize: 512,
+            attribution: svc.label,
+        });
 
-    map.addLayer({
-        id: 'mt-lands-tiles',
-        type: 'raster',
-        source: 'mt-public-lands',
-        paint: {
-            'raster-opacity': 0.65,
-        },
-    });
+        map.addLayer({
+            id: 'tiles-' + key,
+            type: 'raster',
+            source: 'tiles-' + key,
+            paint: { 'raster-opacity': 0.65 },
+            layout: { visibility: key === 'msdi' ? 'visible' : 'none' },
+        });
+    }
 
     // === 2. COUNTY ROADS ===
     map.addSource('roads', { type: 'geojson', data: allRoads });
@@ -461,14 +475,30 @@ function bindFilters() {
     });
 }
 
-// ── Land opacity toggle ──
+// ── Land layer toggles ──
 function bindLandToggle() {
+    // Opacity slider
     const slider = document.getElementById('land-opacity');
-    if (!slider) return;
-    slider.addEventListener('input', () => {
-        const val = Number(slider.value) / 100;
-        document.getElementById('land-opacity-value').textContent = slider.value + '%';
-        map.setPaintProperty('mt-lands-tiles', 'raster-opacity', val);
+    if (slider) {
+        slider.addEventListener('input', () => {
+            const val = Number(slider.value) / 100;
+            document.getElementById('land-opacity-value').textContent = slider.value + '%';
+            for (const key of Object.keys(TILE_SERVICES)) {
+                if (map.getLayer('tiles-' + key)) {
+                    map.setPaintProperty('tiles-' + key, 'raster-opacity', val);
+                }
+            }
+        });
+    }
+
+    // Layer checkboxes
+    document.querySelectorAll('.layer-toggle').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const layerId = 'tiles-' + cb.dataset.layer;
+            if (map.getLayer(layerId)) {
+                map.setLayoutProperty(layerId, 'visibility', cb.checked ? 'visible' : 'none');
+            }
+        });
     });
 }
 
