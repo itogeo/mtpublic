@@ -2,22 +2,37 @@
 // Public lands: Official MT State Library ArcGIS tile service
 // Roads + opportunities: Local GeoJSON from analysis pipeline
 
-const TILE_SERVICES = {
-    msdi: {
-        label: 'MSDI Public Lands',
-        url: 'https://gisservicemt.gov/arcgis/rest/services/MSDI_Framework/PublicLands/MapServer/export' +
-             '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image',
-    },
-    dnrc_access: {
-        label: 'DNRC Trust Land Access',
-        url: 'https://gis.dnrc.mt.gov/arcgis/rest/services/TLMD/AccessMap/MapServer/export' +
-             '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image',
-    },
-    dnrc_tracts: {
-        label: 'DNRC Surface Tracts',
-        url: 'https://gis.dnrc.mt.gov/arcgis/rest/services/TLMD/TLMS/MapServer/export' +
-             '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image',
-    },
+// ArcGIS tile export base
+const MSDI_BASE = 'https://gisservicemt.gov/arcgis/rest/services/MSDI_Framework/PublicLands/MapServer/export' +
+    '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image';
+const DNRC_BASE = 'https://gis.dnrc.mt.gov/arcgis/rest/services/TLMD/';
+
+function msdiFiltered(ownerValues) {
+    const where = ownerValues.map(v => `OWNER='${v}'`).join(' OR ');
+    return MSDI_BASE + '&layerDefs=' + encodeURIComponent(JSON.stringify({"0": where}));
+}
+
+const TILE_LAYERS = {
+    // Individual MSDI land types (official MT colors)
+    blm:   { label: 'BLM',                color: '#FEEA79', on: true,
+             url: msdiFiltered(['US Bureau of Land Management']) },
+    usfs:  { label: 'US Forest Service',   color: '#CCEBC5', on: true,
+             url: msdiFiltered(['US Forest Service']) },
+    state: { label: 'State Trust / DNRC',  color: '#6BCFE2', on: true,
+             url: msdiFiltered(['Montana State Trust Lands','Montana Department of Natural Resources and Conservation','Montana Department of Corrections','Montana Department of Transportation','Montana Fish, Wildlife, and Parks','Montana University System','State of Montana']) },
+    nps:   { label: 'National Parks',      color: '#CABDDC', on: true,
+             url: msdiFiltered(['National Park Service']) },
+    usfws: { label: 'US Fish & Wildlife',  color: '#7FCCA7', on: true,
+             url: msdiFiltered(['US Fish and Wildlife Service']) },
+    fed:   { label: 'Other Federal',       color: '#FBB4CE', on: false,
+             url: msdiFiltered(['US Bureau of Reclamation','US Army Corps of Engineers','US Department of Defense','US Department of Agriculture','US Government']) },
+    local: { label: 'Local Government',    color: '#9C9C9C', on: false,
+             url: msdiFiltered(['City Government','County Government','Local Government']) },
+    // DNRC overlays
+    dnrc_access: { label: 'DNRC Trust Access', color: null, on: false,
+             url: DNRC_BASE + 'AccessMap/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image' },
+    dnrc_tracts: { label: 'DNRC Surface Tracts', color: null, on: false,
+             url: DNRC_BASE + 'TLMS/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image' },
 };
 
 const LAND_LABELS = {
@@ -144,21 +159,20 @@ function oppColorExpr() {
 
 // ── Layers ──
 function addAllLayers() {
-    // === 1. OFFICIAL MT TILE LAYERS ===
-    for (const [key, svc] of Object.entries(TILE_SERVICES)) {
+    // === 1. OFFICIAL MT TILE LAYERS (one per land type) ===
+    for (const [key, layer] of Object.entries(TILE_LAYERS)) {
         map.addSource('tiles-' + key, {
             type: 'raster',
-            tiles: [svc.url],
+            tiles: [layer.url],
             tileSize: 512,
-            attribution: svc.label,
         });
 
         map.addLayer({
             id: 'tiles-' + key,
             type: 'raster',
             source: 'tiles-' + key,
-            paint: { 'raster-opacity': 0.65 },
-            layout: { visibility: key === 'msdi' ? 'visible' : 'none' },
+            paint: { 'raster-opacity': 0.7 },
+            layout: { visibility: layer.on ? 'visible' : 'none' },
         });
     }
 
@@ -477,13 +491,12 @@ function bindFilters() {
 
 // ── Land layer toggles ──
 function bindLandToggle() {
-    // Opacity slider
     const slider = document.getElementById('land-opacity');
     if (slider) {
         slider.addEventListener('input', () => {
             const val = Number(slider.value) / 100;
             document.getElementById('land-opacity-value').textContent = slider.value + '%';
-            for (const key of Object.keys(TILE_SERVICES)) {
+            for (const key of Object.keys(TILE_LAYERS)) {
                 if (map.getLayer('tiles-' + key)) {
                     map.setPaintProperty('tiles-' + key, 'raster-opacity', val);
                 }
@@ -491,7 +504,6 @@ function bindLandToggle() {
         });
     }
 
-    // Layer checkboxes
     document.querySelectorAll('.layer-toggle').forEach(cb => {
         cb.addEventListener('change', () => {
             const layerId = 'tiles-' + cb.dataset.layer;

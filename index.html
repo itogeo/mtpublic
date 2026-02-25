@@ -97,18 +97,24 @@
 
     <!-- Land Layers -->
     <div class="section">
-        <h3>Land Layers</h3>
+        <h3>Land Ownership Layers</h3>
         <div class="checkbox-group">
-            <label><input type="checkbox" class="layer-toggle" data-layer="msdi" checked> MSDI Public Lands</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="blm" checked> <span class="swatch" style="background:#FEEA79"></span> BLM</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="usfs" checked> <span class="swatch" style="background:#CCEBC5"></span> US Forest Service</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="state" checked> <span class="swatch" style="background:#6BCFE2"></span> State Trust / DNRC</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="nps" checked> <span class="swatch" style="background:#CABDDC"></span> National Parks</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="usfws" checked> <span class="swatch" style="background:#7FCCA7"></span> US Fish & Wildlife</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="fed"> <span class="swatch" style="background:#FBB4CE"></span> Other Federal</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="local"> <span class="swatch" style="background:#9C9C9C"></span> Local Government</label>
+        </div>
+        <h3 style="margin-top:0.6rem">DNRC Overlays</h3>
+        <div class="checkbox-group">
             <label><input type="checkbox" class="layer-toggle" data-layer="dnrc_access"> DNRC Trust Land Access</label>
             <label><input type="checkbox" class="layer-toggle" data-layer="dnrc_tracts"> DNRC Surface Tracts</label>
         </div>
         <div class="filter-group" style="margin-top:0.5rem">
-            <label class="filter-label">Opacity: <strong id="land-opacity-value">65%</strong></label>
-            <input type="range" id="land-opacity" min="0" max="100" value="65" step="5">
-        </div>
-        <div class="legend-note">
-            Tile layers streamed from official MT State Library and DNRC ArcGIS services.
+            <label class="filter-label">Opacity: <strong id="land-opacity-value">70%</strong></label>
+            <input type="range" id="land-opacity" min="0" max="100" value="70" step="5">
         </div>
     </div>
 
@@ -120,7 +126,19 @@
             <strong>White lines</strong> = county roads near public land<br>
             <strong>Colored dots</strong> = access opportunity points<br>
             Larger dot = higher score<br>
-            Solid dot = confirmed access &bull; Faded = near-miss
+            Solid dot = confirmed &bull; Faded = near-miss
+        </div>
+    </div>
+
+    <!-- Score -->
+    <div class="section">
+        <h3>What is the Score?</h3>
+        <div class="legend-note">
+            Each opportunity is scored 0&ndash;100 based on four factors:<br><br>
+            <strong>Gap (0&ndash;40 pts)</strong> &mdash; How close is the road easement to the public land? Buffer overlap = 40 pts. Smaller gaps score higher.<br><br>
+            <strong>Land Type (0&ndash;20 pts)</strong> &mdash; BLM &amp; State Trust score highest (often landlocked). USFS and FWP score lower (often already accessible).<br><br>
+            <strong>Parcel Size (0&ndash;20 pts)</strong> &mdash; Larger parcels = more land unlocked by a single access point.<br><br>
+            <strong>Isolation (0&ndash;20 pts)</strong> &mdash; Bonus for parcels likely to be landlocked (BLM/State = 15, FWP = 10, USFS = 5).
         </div>
     </div>
 
