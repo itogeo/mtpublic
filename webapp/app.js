@@ -1,15 +1,36 @@
 // Montana Public Land Access — Mapbox GL JS
 // Public lands: Official MT State Library ArcGIS tile service
-// Roads + opportunities: Local GeoJSON from analysis pipeline
+// Roads: Official MT MSDI Transportation tile service
+// Parcels: PMTiles vector tiles from processed statewide data
+// Opportunities: Local GeoJSON from analysis pipeline
 
-// ArcGIS tile export base
-const MSDI_BASE = 'https://gisservicemt.gov/arcgis/rest/services/MSDI_Framework/PublicLands/MapServer/export' +
+// Register PMTiles protocol for Mapbox GL JS
+const pmtilesProtocol = new pmtiles.Protocol();
+mapboxgl.addProtocol('pmtiles', pmtilesProtocol.tile);
+
+// ArcGIS tile export bases
+const MSDI_LANDS_BASE = 'https://gisservicemt.gov/arcgis/rest/services/MSDI_Framework/PublicLands/MapServer/export' +
     '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image';
-const DNRC_BASE = 'https://gis.dnrc.mt.gov/arcgis/rest/services/TLMD/';
+const MSDI_ROADS_BASE = 'https://gisservicemt.gov/arcgis/rest/services/MSDI_Framework/MontanaTransportation/MapServer/export' +
+    '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image';
+const DNRC_ACCESS_BASE = 'https://gis.dnrc.mt.gov/arcgis/rest/services/TLMD/AccessMap/MapServer/export' +
+    '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image';
+const DNRC_TLMS_BASE = 'https://gis.dnrc.mt.gov/arcgis/rest/services/TLMD/TLMS/MapServer/export' +
+    '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image';
 
 function msdiFiltered(ownerValues) {
     const where = ownerValues.map(v => `OWNER='${v}'`).join(' OR ');
-    return MSDI_BASE + '&layerDefs=' + encodeURIComponent(JSON.stringify({"0": where}));
+    return MSDI_LANDS_BASE + '&layerDefs=' + encodeURIComponent(JSON.stringify({"0": where}));
+}
+
+function roadFiltered(ownershipValues) {
+    const where = ownershipValues.map(v => `Ownership='${v}'`).join(' OR ');
+    return MSDI_ROADS_BASE + '&layerDefs=' + encodeURIComponent(JSON.stringify({"0": where}));
+}
+
+function roadClassFiltered(classValues) {
+    const where = classValues.map(v => `RoadClass='${v}'`).join(' OR ');
+    return MSDI_ROADS_BASE + '&layerDefs=' + encodeURIComponent(JSON.stringify({"0": where}));
 }
 
 const TILE_LAYERS = {
@@ -28,11 +49,31 @@ const TILE_LAYERS = {
              url: msdiFiltered(['US Bureau of Reclamation','US Army Corps of Engineers','US Department of Defense','US Department of Agriculture','US Government']) },
     local: { label: 'Local Government',    color: '#9C9C9C', on: false,
              url: msdiFiltered(['City Government','County Government','Local Government']) },
-    // DNRC overlays
-    dnrc_access: { label: 'DNRC Trust Access', color: null, on: false,
-             url: DNRC_BASE + 'AccessMap/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image' },
-    dnrc_tracts: { label: 'DNRC Surface Tracts', color: null, on: false,
-             url: DNRC_BASE + 'TLMS/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image' },
+    // DNRC Access overlays (split by access type)
+    dnrc_public:  { label: 'DNRC Public Access',     color: '#005CE6', on: false,
+             url: DNRC_ACCESS_BASE + '&layers=show:1' },
+    dnrc_closed:  { label: 'DNRC No Public Access',  color: '#FF0000', on: false,
+             url: DNRC_ACCESS_BASE + '&layers=show:0' },
+    dnrc_special: { label: 'DNRC Special Scenario',  color: '#A900E6', on: false,
+             url: DNRC_ACCESS_BASE + '&layers=show:2' },
+    dnrc_rec:     { label: 'DNRC Non-Trust Rec Use',  color: '#00FFC5', on: false,
+             url: DNRC_ACCESS_BASE + '&layers=show:3' },
+    // DNRC Surface Tracts
+    dnrc_tracts:  { label: 'DNRC Surface Tracts',    color: '#97DBF2', on: false,
+             url: DNRC_TLMS_BASE + '&layers=show:0' },
+};
+
+const ROAD_LAYERS = {
+    county:   { label: 'County Roads',   color: '#f8fafc', on: true,
+                url: roadFiltered(['County','Public']) },
+    highways: { label: 'Highways',       color: '#f97316', on: false,
+                url: roadClassFiltered(['Primary','Secondary']) },
+    federal:  { label: 'Federal Roads',  color: '#86efac', on: false,
+                url: roadFiltered(['Federal']) },
+    private:  { label: 'Private Roads',  color: '#fca5a5', on: false,
+                url: roadFiltered(['Private']) },
+    city:     { label: 'City Roads',     color: '#c4b5fd', on: false,
+                url: roadFiltered(['City']) },
 };
 
 const LAND_LABELS = {
@@ -67,7 +108,6 @@ const OPP_CATEGORY_MAP = {
 
 let map;
 let allOpportunities = null;
-let allRoads = null;
 
 // ── Token ──
 function initToken() {
@@ -118,10 +158,6 @@ function updateLoadingText(msg) {
 // ── Load data ──
 async function loadAllData() {
     try {
-        updateLoadingText('Loading county roads...');
-        const roadsResp = await fetch('data/roads.geojson');
-        allRoads = await roadsResp.json();
-
         updateLoadingText('Loading access opportunities...');
         const oppsResp = await fetch('data/opportunities.geojson');
         allOpportunities = await oppsResp.json();
@@ -137,6 +173,8 @@ async function loadAllData() {
         bindSidebar();
         bindBasemap();
         bindLandToggle();
+        bindRoadToggle();
+        bindParcelToggle();
 
         document.getElementById('loading').classList.add('hidden');
     } catch (err) {
@@ -167,74 +205,117 @@ function addAllLayers() {
             tileSize: 512,
         });
 
-        map.addLayer({
+        const tileLayerOpts = {
             id: 'tiles-' + key,
             type: 'raster',
             source: 'tiles-' + key,
             paint: { 'raster-opacity': 0.7 },
             layout: { visibility: layer.on ? 'visible' : 'none' },
+        };
+        if (layer.minzoom) tileLayerOpts.minzoom = layer.minzoom;
+        map.addLayer(tileLayerOpts);
+    }
+
+    // === 2. ROAD TILE LAYERS ===
+    for (const [key, layer] of Object.entries(ROAD_LAYERS)) {
+        map.addSource('roads-' + key, {
+            type: 'raster',
+            tiles: [layer.url],
+            tileSize: 512,
+        });
+
+        map.addLayer({
+            id: 'roads-' + key,
+            type: 'raster',
+            source: 'roads-' + key,
+            minzoom: 8,
+            paint: { 'raster-opacity': 0.9 },
+            layout: { visibility: layer.on ? 'visible' : 'none' },
         });
     }
 
-    // === 2. COUNTY ROADS ===
-    map.addSource('roads', { type: 'geojson', data: allRoads });
+    // === 3. CADASTRAL PARCELS (PMTiles vector tiles) ===
+    map.addSource('parcels-vt', {
+        type: 'vector',
+        url: 'pmtiles://data/parcels.pmtiles',
+    });
 
+    // Ownership blocks — thick exterior borders (visible z8+)
     map.addLayer({
-        id: 'road-casing',
+        id: 'ownership-borders',
+        source: 'parcels-vt',
+        'source-layer': 'ownership_blocks',
         type: 'line',
-        source: 'roads',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        minzoom: 8,
         paint: {
-            'line-color': '#1e293b',
-            'line-width': [
-                'interpolate', ['linear'], ['zoom'],
-                6, 0.8, 10, 3, 14, 7, 17, 12,
-            ],
-            'line-opacity': [
-                'interpolate', ['linear'], ['zoom'],
-                6, 0.15, 10, 0.4, 14, 0.5,
-            ],
+            'line-color': '#8B6914',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.5, 12, 2.5, 14, 3],
+            'line-opacity': 0.7,
         },
+        layout: { visibility: 'none' },
     });
 
+    // Individual parcels — thin interior borders (visible z10+)
     map.addLayer({
-        id: 'road-lines',
+        id: 'parcel-borders',
+        source: 'parcels-vt',
+        'source-layer': 'parcels',
         type: 'line',
-        source: 'roads',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        minzoom: 10,
         paint: {
-            'line-color': '#f8fafc',
-            'line-width': [
-                'interpolate', ['linear'], ['zoom'],
-                6, 0.3, 10, 1.5, 14, 4, 17, 8,
-            ],
-            'line-opacity': [
-                'interpolate', ['linear'], ['zoom'],
-                6, 0.25, 10, 0.5, 14, 0.7,
-            ],
+            'line-color': '#D4A574',
+            'line-width': 0.5,
+            'line-opacity': 0.6,
         },
+        layout: { visibility: 'none' },
     });
 
+    // Parcel fill — transparent, just for click targeting (z10+)
     map.addLayer({
-        id: 'road-labels',
-        type: 'symbol',
-        source: 'roads',
-        minzoom: 12,
-        layout: {
-            'symbol-placement': 'line',
-            'text-field': ['get', 'road_name'],
-            'text-size': 11,
-            'text-font': ['DIN Pro Regular', 'Arial Unicode MS Regular'],
-            'text-allow-overlap': false,
-        },
+        id: 'parcel-fill',
+        source: 'parcels-vt',
+        'source-layer': 'parcels',
+        type: 'fill',
+        minzoom: 10,
         paint: {
-            'text-color': '#e2e8f0',
-            'text-halo-color': 'rgba(15,23,42,0.8)',
-            'text-halo-width': 1.5,
+            'fill-color': '#D4A574',
+            'fill-opacity': 0,
         },
+        layout: { visibility: 'none' },
     });
 
-    // === 3. OPPORTUNITY POINTS ===
+    // Highlight layer — selected owner's parcels
+    map.addLayer({
+        id: 'parcel-highlight',
+        source: 'parcels-vt',
+        'source-layer': 'parcels',
+        type: 'fill',
+        minzoom: 10,
+        paint: {
+            'fill-color': '#F59E0B',
+            'fill-opacity': 0.35,
+        },
+        filter: ['==', 'owner_id', ''],
+        layout: { visibility: 'none' },
+    });
+
+    // Highlight border — selected owner's parcels thick outline
+    map.addLayer({
+        id: 'parcel-highlight-border',
+        source: 'parcels-vt',
+        'source-layer': 'parcels',
+        type: 'line',
+        minzoom: 10,
+        paint: {
+            'line-color': '#F59E0B',
+            'line-width': 2.5,
+            'line-opacity': 0.9,
+        },
+        filter: ['==', 'owner_id', ''],
+        layout: { visibility: 'none' },
+    });
+
+    // === 4. OPPORTUNITY POINTS ===
     map.addSource('opportunities', {
         type: 'geojson',
         data: allOpportunities,
@@ -319,9 +400,9 @@ function addAllLayers() {
     // ── Click handlers ──
     map.on('click', 'clusters', clusterClick);
     map.on('click', 'points', pointClick);
-    map.on('click', 'road-lines', roadClick);
+    map.on('click', mapClick);
 
-    ['points', 'clusters'].forEach(l => {
+    ['points', 'clusters', 'parcel-fill'].forEach(l => {
         map.on('mouseenter', l, () => map.getCanvas().style.cursor = 'pointer');
         map.on('mouseleave', l, () => map.getCanvas().style.cursor = '');
     });
@@ -376,13 +457,7 @@ function pointClick(e) {
                     </div>
                     <div class="popup-section">
                         <div class="popup-section-title">Score ${p.score}/100</div>
-                        <div class="score-bar-bg"><div class="score-bar" style="width:${p.score}%"></div></div>
-                        <div class="score-chips">
-                            <span class="chip">Gap ${p.gap_score}</span>
-                            <span class="chip">Land ${p.land_score}</span>
-                            <span class="chip">Size ${p.size_score}</span>
-                            <span class="chip">Iso ${p.isolation_score}</span>
-                        </div>
+                        <div class="score-bar-container"><div class="score-bar" style="width:${p.score}%"></div></div>
                     </div>
                 </div>
             </div>
@@ -390,29 +465,61 @@ function pointClick(e) {
         .addTo(map);
 }
 
-// ── Click: road line ──
-function roadClick(e) {
-    if (!e.features.length) return;
-    if (map.queryRenderedFeatures(e.point, { layers: ['points'] }).length) return;
+// ── Click: map background (parcel identify + owner highlight) ──
+function mapClick(e) {
+    // Skip if an opportunity point or cluster was clicked
+    const hits = map.queryRenderedFeatures(e.point, { layers: ['points', 'clusters'] });
+    if (hits.length > 0) return;
 
-    const p = e.features[0].properties;
-    const mi = p.length_ft ? (Number(p.length_ft) / 5280).toFixed(2) : '--';
+    // Check for parcel click (vector tile features)
+    const parcelHits = map.queryRenderedFeatures(e.point, { layers: ['parcel-fill'] });
+    if (parcelHits.length === 0) {
+        // Clear any existing highlight
+        clearParcelHighlight();
+        return;
+    }
 
-    new mapboxgl.Popup({ maxWidth: '240px', offset: 10 })
+    const p = parcelHits[0].properties;
+    const ownerId = p.owner_id || '';
+    const acres = p.TotalAcres ? Number(p.TotalAcres).toLocaleString(undefined, {maximumFractionDigits: 1}) : (p.GISAcres ? Number(p.GISAcres).toLocaleString(undefined, {maximumFractionDigits: 1}) : '--');
+    const value = p.TotalValue ? '$' + Number(p.TotalValue).toLocaleString() : '--';
+
+    // Highlight ALL parcels with same owner
+    map.setFilter('parcel-highlight', ['==', 'owner_id', ownerId]);
+    map.setFilter('parcel-highlight-border', ['==', 'owner_id', ownerId]);
+
+    new mapboxgl.Popup({ maxWidth: '320px', offset: 12 })
         .setLngLat(e.lngLat)
         .setHTML(`
             <div class="popup">
-                <div class="popup-top road">
-                    <div class="popup-title">${p.road_name || 'Unnamed'}</div>
-                    <div class="popup-county">${p.county || ''} — County Road</div>
+                <div class="popup-top parcel">
+                    <div class="popup-title">${p.OwnerName || 'Unknown Owner'}</div>
+                    <div class="popup-county">${p.CountyName || ''} County</div>
+                    <span class="badge parcel-badge">${p.PropType || 'Parcel'}</span>
                 </div>
                 <div class="popup-body">
-                    <div class="popup-row"><span class="label">Length</span><span class="value">${mi} mi</span></div>
-                    <div class="popup-row"><span class="label">Class</span><span class="value">${p.road_class || '--'}</span></div>
+                    <div class="popup-section">
+                        <div class="popup-section-title">Property</div>
+                        <div class="popup-row"><span class="label">Acres</span><span class="value">${acres}</span></div>
+                        <div class="popup-row"><span class="label">Address</span><span class="value">${p.AddressLine1 || '--'}</span></div>
+                        <div class="popup-row"><span class="label">Location</span><span class="value">${p.CityStateZip || '--'}</span></div>
+                    </div>
+                    <div class="popup-section">
+                        <div class="popup-section-title">Assessed Value</div>
+                        <div class="popup-row"><span class="label">Total</span><span class="value">${value}</span></div>
+                    </div>
                 </div>
             </div>
         `)
+        .on('close', clearParcelHighlight)
         .addTo(map);
+}
+
+function clearParcelHighlight() {
+    if (map.getLayer('parcel-highlight')) {
+        map.setFilter('parcel-highlight', ['==', 'owner_id', '']);
+        map.setFilter('parcel-highlight-border', ['==', 'owner_id', '']);
+    }
 }
 
 // ── Filtering ──
@@ -444,16 +551,6 @@ function applyFilters() {
         features: allOpportunities.features.filter(f => matchesFilter(f.properties)),
     };
     map.getSource('opportunities').setData(filtered);
-
-    const activeRoadIdxs = new Set();
-    filtered.features.forEach(f => {
-        if (f.properties.road_idx != null) activeRoadIdxs.add(f.properties.road_idx);
-    });
-    map.getSource('roads').setData({
-        type: 'FeatureCollection',
-        features: allRoads.features.filter(f => activeRoadIdxs.has(f.properties.road_idx)),
-    });
-
     updateVisibleCount(filtered.features.length);
 }
 
@@ -484,7 +581,6 @@ function bindFilters() {
         document.getElementById('gap-value').textContent = '100';
         document.getElementById('filter-county').value = '';
         map.getSource('opportunities').setData(allOpportunities);
-        map.getSource('roads').setData(allRoads);
         updateVisibleCount(allOpportunities.features.length);
     });
 }
@@ -511,6 +607,33 @@ function bindLandToggle() {
                 map.setLayoutProperty(layerId, 'visibility', cb.checked ? 'visible' : 'none');
             }
         });
+    });
+}
+
+// ── Road layer toggles ──
+function bindRoadToggle() {
+    document.querySelectorAll('.road-toggle').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const layerId = 'roads-' + cb.dataset.layer;
+            if (map.getLayer(layerId)) {
+                map.setLayoutProperty(layerId, 'visibility', cb.checked ? 'visible' : 'none');
+            }
+        });
+    });
+}
+
+// ── Parcel toggle ──
+const PARCEL_LAYERS = ['ownership-borders', 'parcel-borders', 'parcel-fill', 'parcel-highlight', 'parcel-highlight-border'];
+
+function bindParcelToggle() {
+    const cb = document.getElementById('parcels-toggle');
+    if (!cb) return;
+    cb.addEventListener('change', () => {
+        const vis = cb.checked ? 'visible' : 'none';
+        PARCEL_LAYERS.forEach(id => {
+            if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+        });
+        if (!cb.checked) clearParcelHighlight();
     });
 }
 

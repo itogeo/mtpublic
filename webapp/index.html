@@ -107,14 +107,40 @@
             <label><input type="checkbox" class="layer-toggle" data-layer="fed"> <span class="swatch" style="background:#FBB4CE"></span> Other Federal</label>
             <label><input type="checkbox" class="layer-toggle" data-layer="local"> <span class="swatch" style="background:#9C9C9C"></span> Local Government</label>
         </div>
-        <h3 style="margin-top:0.6rem">DNRC Overlays</h3>
+        <h3 style="margin-top:0.6rem">DNRC Trust Land Access</h3>
         <div class="checkbox-group">
-            <label><input type="checkbox" class="layer-toggle" data-layer="dnrc_access"> DNRC Trust Land Access</label>
-            <label><input type="checkbox" class="layer-toggle" data-layer="dnrc_tracts"> DNRC Surface Tracts</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="dnrc_public"> <span class="swatch" style="background:#005CE6"></span> Public Access</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="dnrc_closed"> <span class="swatch" style="background:#FF0000"></span> No Public Access</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="dnrc_special"> <span class="swatch" style="background:#A900E6"></span> Special Scenario</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="dnrc_rec"> <span class="swatch" style="background:#00FFC5"></span> Non-Trust Rec Use</label>
+            <label><input type="checkbox" class="layer-toggle" data-layer="dnrc_tracts"> <span class="swatch" style="background:#97DBF2"></span> Surface Tracts</label>
         </div>
         <div class="filter-group" style="margin-top:0.5rem">
             <label class="filter-label">Opacity: <strong id="land-opacity-value">70%</strong></label>
             <input type="range" id="land-opacity" min="0" max="100" value="70" step="5">
+        </div>
+    </div>
+
+    <!-- Cadastral / Ownership -->
+    <div class="section">
+        <h3>Cadastral / Ownership</h3>
+        <div class="checkbox-group">
+            <label><input type="checkbox" id="parcels-toggle"> <span class="swatch" style="background:#D4A574"></span> Parcel Boundaries</label>
+        </div>
+        <div class="legend-note" style="margin-top:0.4rem">
+            Toggle on to see ownership boundaries. Thick lines = ownership block edges. Click any parcel to see owner info and highlight all their parcels.
+        </div>
+    </div>
+
+    <!-- Road Layers -->
+    <div class="section">
+        <h3>Road Layers</h3>
+        <div class="checkbox-group">
+            <label><input type="checkbox" class="road-toggle" data-layer="county" checked> <span class="swatch" style="background:#f8fafc"></span> County Roads</label>
+            <label><input type="checkbox" class="road-toggle" data-layer="highways"> <span class="swatch" style="background:#f97316"></span> Highways</label>
+            <label><input type="checkbox" class="road-toggle" data-layer="federal"> <span class="swatch" style="background:#86efac"></span> Federal Roads</label>
+            <label><input type="checkbox" class="road-toggle" data-layer="private"> <span class="swatch" style="background:#fca5a5"></span> Private Roads</label>
+            <label><input type="checkbox" class="road-toggle" data-layer="city"> <span class="swatch" style="background:#c4b5fd"></span> City Roads</label>
         </div>
     </div>
 
@@ -123,22 +149,9 @@
         <h3>Map Key</h3>
         <div class="legend-note">
             <strong>Colored fills</strong> = official MT public land boundaries<br>
-            <strong>White lines</strong> = county roads near public land<br>
+            <strong>Road lines</strong> = official MSDI transportation data<br>
             <strong>Colored dots</strong> = access opportunity points<br>
-            Larger dot = higher score<br>
             Solid dot = confirmed &bull; Faded = near-miss
-        </div>
-    </div>
-
-    <!-- Score -->
-    <div class="section">
-        <h3>What is the Score?</h3>
-        <div class="legend-note">
-            Each opportunity is scored 0&ndash;100 based on four factors:<br><br>
-            <strong>Gap (0&ndash;40 pts)</strong> &mdash; How close is the road easement to the public land? Buffer overlap = 40 pts. Smaller gaps score higher.<br><br>
-            <strong>Land Type (0&ndash;20 pts)</strong> &mdash; BLM &amp; State Trust score highest (often landlocked). USFS and FWP score lower (often already accessible).<br><br>
-            <strong>Parcel Size (0&ndash;20 pts)</strong> &mdash; Larger parcels = more land unlocked by a single access point.<br><br>
-            <strong>Isolation (0&ndash;20 pts)</strong> &mdash; Bonus for parcels likely to be landlocked (BLM/State = 15, FWP = 10, USFS = 5).
         </div>
     </div>
 
@@ -167,6 +180,7 @@
 </div>
 
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@4.2.0/dist/pmtiles.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

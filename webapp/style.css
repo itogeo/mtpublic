@@ -266,6 +266,7 @@ select:focus { outline: none; border-color: var(--accent); }
 .popup-top.other::before          { background: var(--other); }
 .popup-top.other_federal::before  { background: #9E9E7E; }
 .popup-top.road::before           { background: #e2e8f0; }
+.popup-top.parcel::before         { background: #D4A574; }
 
 .popup-title { font-size: 0.95rem; font-weight: 600; color: #fff; }
 .popup-county { font-size: 0.75rem; color: var(--text-dim); margin: 2px 0 4px; }
@@ -275,8 +276,9 @@ select:focus { outline: none; border-color: var(--accent); }
     font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
     letter-spacing: 0.5px;
 }
-.badge.confirmed { background: rgba(16,185,129,0.2); color: #6ee7b7; }
-.badge.nearmiss  { background: rgba(245,158,11,0.2); color: #fbbf24; }
+.badge.confirmed    { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+.badge.nearmiss     { background: rgba(245,158,11,0.2); color: #fbbf24; }
+.badge.parcel-badge { background: rgba(212,165,116,0.2); color: #D4A574; }
 
 .popup-body { padding: 0.5rem 1rem 0.75rem; }
 .popup-section { margin-bottom: 0.5rem; }

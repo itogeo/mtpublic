@@ -1,1 +1,12 @@
 .DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
+
+# Pipeline data (large, downloaded/generated)
+/data/
+/output/
+/townships/
+
+# Large generated files
+webapp/data/*.pmtiles
