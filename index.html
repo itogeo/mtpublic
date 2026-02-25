@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Montana Public Land Access</title>
+    <title>Montana Public Land Access Map</title>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,11 +14,11 @@
 <!-- Token Modal -->
 <div id="token-modal" class="modal">
     <div class="modal-content">
-        <h2>Montana Public Land Access Map</h2>
-        <p>Enter your Mapbox access token to load the map.</p>
-        <input type="text" id="token-input" placeholder="pk.eyJ1Ijo...">
-        <button id="token-submit">Load Map</button>
-        <p class="hint">Get a free token at <a href="https://account.mapbox.com" target="_blank">account.mapbox.com</a></p>
+        <h2>Montana Public Land Access</h2>
+        <p class="modal-sub">Interactive map of 15,000+ county road easement opportunities</p>
+        <input type="text" id="token-input" placeholder="Enter your Mapbox access token">
+        <button id="token-submit">Launch Map</button>
+        <p class="hint">Free token at <a href="https://account.mapbox.com" target="_blank">account.mapbox.com</a></p>
     </div>
 </div>
 
@@ -24,12 +26,12 @@
 <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
         <h1>MT Public Land Access</h1>
-        <p class="subtitle">County Road Easement Analysis</p>
-        <button id="sidebar-toggle" class="toggle-btn" title="Collapse sidebar">&laquo;</button>
+        <p class="subtitle">County Road Easement Analysis &mdash; MCA 7-14-2112</p>
+        <button id="sidebar-toggle" class="toggle-btn" title="Collapse">&laquo;</button>
     </div>
 
     <!-- Stats -->
-    <div class="section" id="stats-section">
+    <div class="section">
         <div class="stats-grid">
             <div class="stat">
                 <span class="stat-value" id="stat-total">--</span>
@@ -54,40 +56,35 @@
     <div class="section">
         <h3>Filters</h3>
 
-        <!-- Status -->
         <div class="filter-group">
             <label class="filter-label">Status</label>
             <div class="checkbox-group">
                 <label><input type="checkbox" id="filter-confirmed" checked> Confirmed Access</label>
-                <label><input type="checkbox" id="filter-nearmiss" checked> Near-Miss</label>
+                <label><input type="checkbox" id="filter-nearmiss" checked> Near-Miss (&lt;100 ft gap)</label>
             </div>
         </div>
 
-        <!-- Land Type -->
         <div class="filter-group">
             <label class="filter-label">Land Type</label>
             <div class="checkbox-group" id="land-type-filters">
                 <label><input type="checkbox" data-category="BLM" checked> <span class="dot blm"></span> BLM</label>
-                <label><input type="checkbox" data-category="USFS" checked> <span class="dot usfs"></span> USFS</label>
-                <label><input type="checkbox" data-category="STATE" checked> <span class="dot state"></span> State Trust</label>
+                <label><input type="checkbox" data-category="USFS" checked> <span class="dot usfs"></span> US Forest Service</label>
+                <label><input type="checkbox" data-category="STATE" checked> <span class="dot state"></span> State Trust / DNRC</label>
                 <label><input type="checkbox" data-category="FWP" checked> <span class="dot fwp"></span> FWP / Wildlife</label>
-                <label><input type="checkbox" data-category="OTHER" checked> <span class="dot other"></span> Other</label>
+                <label><input type="checkbox" data-category="OTHER" checked> <span class="dot other"></span> Other Public</label>
             </div>
         </div>
 
-        <!-- Score Range -->
         <div class="filter-group">
-            <label class="filter-label">Min Score: <span id="score-value">0</span></label>
+            <label class="filter-label">Min Score: <strong id="score-value">0</strong></label>
             <input type="range" id="filter-score" min="0" max="100" value="0" step="5">
         </div>
 
-        <!-- Gap Range -->
         <div class="filter-group">
-            <label class="filter-label">Max Gap: <span id="gap-value">100</span> ft</label>
+            <label class="filter-label">Max Gap: <strong id="gap-value">100</strong> ft</label>
             <input type="range" id="filter-gap" min="-30" max="100" value="100" step="5">
         </div>
 
-        <!-- County -->
         <div class="filter-group">
             <label class="filter-label">County</label>
             <select id="filter-county">
@@ -95,22 +92,30 @@
             </select>
         </div>
 
-        <button id="reset-filters" class="reset-btn">Reset Filters</button>
+        <button id="reset-filters" class="reset-btn">Reset All Filters</button>
     </div>
 
     <!-- Legend -->
     <div class="section">
-        <h3>Legend</h3>
+        <h3>Public Lands</h3>
         <div class="legend">
-            <div class="legend-item"><span class="dot blm"></span> BLM</div>
-            <div class="legend-item"><span class="dot usfs"></span> USFS / Forest Service</div>
-            <div class="legend-item"><span class="dot state"></span> State Trust / DNRC</div>
-            <div class="legend-item"><span class="dot fwp"></span> FWP / Wildlife</div>
-            <div class="legend-item"><span class="dot other"></span> Other Public</div>
+            <div class="legend-item"><span class="swatch blm"></span> BLM</div>
+            <div class="legend-item"><span class="swatch usfs"></span> US Forest Service</div>
+            <div class="legend-item"><span class="swatch state"></span> State Trust / DNRC</div>
+            <div class="legend-item"><span class="swatch fwp"></span> FWP / Wildlife</div>
+            <div class="legend-item"><span class="swatch usfws"></span> US Fish & Wildlife</div>
+            <div class="legend-item"><span class="swatch nps"></span> National Park Service</div>
+            <div class="legend-item"><span class="swatch bor"></span> Bureau of Reclamation</div>
+            <div class="legend-item"><span class="swatch dod"></span> Dept. of Defense</div>
+            <div class="legend-item"><span class="swatch local"></span> Local Government</div>
         </div>
+        <h3 style="margin-top:0.6rem">Map Key</h3>
         <div class="legend-note">
-            Circle size = opportunity score<br>
-            Solid = confirmed | Faded = near-miss
+            <strong>Colored fills</strong> = public land boundaries (statewide)<br>
+            <strong>White lines</strong> = county roads near public land<br>
+            <strong>Colored dots</strong> = access opportunity points<br>
+            Larger dot = higher score<br>
+            Solid dot = confirmed access &bull; Faded = near-miss
         </div>
     </div>
 
@@ -125,20 +130,17 @@
     </div>
 
     <div class="section footer">
-        <p>MCA 7-14-2112: 60 ft statutory county road width (30 ft from centerline)</p>
+        <p>MCA 7-14-2112: County roads have a 60 ft statutory width (30 ft from centerline) unless otherwise specified in the road petition.</p>
     </div>
 </div>
 
-<!-- Sidebar collapsed toggle -->
 <button id="sidebar-open" class="open-btn" style="display:none;" title="Open sidebar">&raquo;</button>
 
-<!-- Map -->
 <div id="map"></div>
 
-<!-- Loading indicator -->
-<div id="loading" class="loading">
+<div id="loading" class="loading hidden">
     <div class="spinner"></div>
-    <p>Loading 15,000+ opportunities...</p>
+    <p id="loading-text">Loading map data...</p>
 </div>
 
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
