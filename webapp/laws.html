@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Montana Public Land Access — Legal Reference</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-panel: #1e293b;
+            --bg-card: #334155;
+            --border: #475569;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+            --accent: #3b82f6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            line-height: 1.7;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: #60a5fa; }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.25rem;
+        }
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+        .toc {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .toc h2 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            margin-bottom: 0.75rem;
+        }
+        .toc ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .toc a {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.88rem;
+            transition: color 0.2s;
+        }
+        .toc a:hover { color: #60a5fa; }
+        .law-section {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .law-section h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.2rem;
+        }
+        .law-section .cite {
+            font-size: 0.8rem;
+            color: var(--accent);
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+        .law-section .cite a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        .law-section .cite a:hover { text-decoration: underline; }
+        .law-section p {
+            font-size: 0.9rem;
+            color: var(--text);
+            margin-bottom: 0.75rem;
+        }
+        .law-section blockquote {
+            background: var(--bg-dark);
+            border-left: 3px solid var(--accent);
+            padding: 0.75rem 1rem;
+            margin: 0.75rem 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        .law-section ul {
+            margin: 0.5rem 0 0.75rem 1.25rem;
+            font-size: 0.88rem;
+        }
+        .law-section li {
+            margin-bottom: 0.35rem;
+            color: var(--text);
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 4px;
+        }
+        .tag.roads { background: rgba(59,130,246,0.2); color: #60a5fa; }
+        .tag.water { background: rgba(34,197,94,0.2); color: #4ade80; }
+        .tag.land { background: rgba(234,179,8,0.2); color: #facc15; }
+        .tag.constitution { background: rgba(168,85,247,0.2); color: #c084fc; }
+        .tag.access { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+        .disclaimer {
+            margin-top: 2rem;
+            padding: 1rem 1.25rem;
+            background: rgba(234,179,8,0.08);
+            border: 1px solid rgba(234,179,8,0.3);
+            border-radius: 10px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+        @media (max-width: 640px) {
+            .container { padding: 1rem; }
+            h1 { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">&larr; Back to Map</a>
+
+        <h1>Montana Public Land Access Law</h1>
+        <p class="subtitle">Key statutes and constitutional provisions governing public land and water access in Montana</p>
+
+        <div class="toc">
+            <h2>Contents</h2>
+            <ul>
+                <li><a href="#county-roads">County Road Width &mdash; MCA 7-14-2112</a></li>
+                <li><a href="#road-establishment">County Road Establishment &mdash; MCA 7-14-2101</a></li>
+                <li><a href="#prescriptive">Prescriptive Easements &mdash; MCA 70-19-401</a></li>
+                <li><a href="#stream-access">Stream Access Law &mdash; MCA 23-2-301 et seq.</a></li>
+                <li><a href="#constitution-water">MT Constitution Art. IX, &sect;3 &mdash; Water Rights</a></li>
+                <li><a href="#trust-lands">State Trust Lands &mdash; MCA 77-1-101 et seq.</a></li>
+                <li><a href="#constitution-education">MT Constitution Art. X, &sect;11 &mdash; School Trust</a></li>
+                <li><a href="#recreation">Recreational Use &mdash; MCA 70-16-301 et seq.</a></li>
+                <li><a href="#corner-crossing">Corner Crossing &amp; Access Issues</a></li>
+            </ul>
+        </div>
+
+        <!-- County Road Width -->
+        <div class="law-section" id="county-roads">
+            <span class="tag roads">Roads</span>
+            <h2>County Road Width</h2>
+            <span class="cite"><a href="https://leg.mt.gov/bills/mca/title_0070/chapter_0140/part_0210/section_0120/0070-0140-0210-0120.html" target="_blank">MCA 7-14-2112</a></span>
+            <blockquote>"County roads are 60 feet wide. They extend 30 feet on each side of the center of the traveled road, unless established otherwise by the road petition or changed by a board of county commissioners."</blockquote>
+            <p>This is the foundation of this mapping project. Montana county roads carry a <strong>60-foot statutory right-of-way</strong> (30 feet from centerline) by default. When a county road passes within 30 feet of public land, the road's easement creates legal public access to that land.</p>
+            <p>The statute applies to all county roads unless the original road petition specified a different width. Most county roads in rural Montana use the default 60-foot width.</p>
+        </div>
+
+        <!-- County Road Establishment -->
+        <div class="law-section" id="road-establishment">
+            <span class="tag roads">Roads</span>
+            <h2>County Road Establishment</h2>
+            <span class="cite"><a href="https://leg.mt.gov/bills/mca/title_0070/chapter_0140/part_0210/section_0010/0070-0140-0210-0010.html" target="_blank">MCA 7-14-2101 through 7-14-2615</a></span>
+            <p>Title 7, Chapter 14 of the Montana Code Annotated governs county roads. Key provisions:</p>
+            <ul>
+                <li><strong>MCA 7-14-2101:</strong> County commissioners have the power to establish, maintain, and abandon county roads</li>
+                <li><strong>MCA 7-14-2104:</strong> Roads established by prescription (continuous public use for 5+ years) have the same legal status as roads established by petition</li>
+                <li><strong>MCA 7-14-2615:</strong> County commissioners cannot abandon a road that provides the sole access to public land</li>
+            </ul>
+        </div>
+
+        <!-- Prescriptive Easements -->
+        <div class="law-section" id="prescriptive">
+            <span class="tag access">Access</span>
+            <h2>Prescriptive Easements</h2>
+            <span class="cite"><a href="https://leg.mt.gov/bills/mca/title_0070/chapter_0190/part_0040/section_0010/0070-0190-0040-0010.html" target="_blank">MCA 70-19-401</a></span>
+            <p>Roads that have been used by the public for a continuous period of <strong>5 years or more</strong> may be established as public roads by prescription. This is relevant where historical county roads may not have formal establishment records but have been continuously used.</p>
+            <blockquote>"A road or trail used by the public for a period of not less than 5 years, and which has been maintained at public expense, is a public road."</blockquote>
+        </div>
+
+        <!-- Stream Access Law -->
+        <div class="law-section" id="stream-access">
+            <span class="tag water">Water</span>
+            <h2>Montana Stream Access Law</h2>
+            <span class="cite"><a href="https://leg.mt.gov/bills/mca/title_0230/chapter_0020/part_0030/sections_index.html" target="_blank">MCA 23-2-301 through 23-2-322</a></span>
+            <p>Montana's landmark Stream Access Law establishes that <strong>all surface water in the state is owned by the state</strong> and available for recreational use by the public. Key principles:</p>
+            <ul>
+                <li><strong>MCA 23-2-302:</strong> All surface water capable of recreational use is available for use by the public, regardless of the ownership of the land beneath or adjacent to the water</li>
+                <li><strong>MCA 23-2-311:</strong> The public may use rivers and streams for recreation between the ordinary high-water marks</li>
+                <li><strong>MCA 23-2-312:</strong> Portage around barriers is permitted within the high-water marks or on adjacent public land</li>
+                <li><strong>MCA 23-2-321:</strong> No person may prevent public use of surface water for recreational purposes</li>
+            </ul>
+            <p>The law was upheld by the Montana Supreme Court in <em>Montana Coalition for Stream Access v. Curran</em> (1984) and <em>Montana Coalition for Stream Access v. Hildreth</em> (1984).</p>
+        </div>
+
+        <!-- Constitution - Water -->
+        <div class="law-section" id="constitution-water">
+            <span class="tag constitution">Constitution</span> <span class="tag water">Water</span>
+            <h2>Montana Constitution &mdash; Water Rights</h2>
+            <span class="cite"><a href="https://leg.mt.gov/bills/mca/title_0000/article_0090/part_0010/section_0030/0000-0090-0010-0030.html" target="_blank">Article IX, Section 3</a></span>
+            <blockquote>"All existing rights to the use of any waters for any useful or beneficial purpose are hereby recognized and confirmed. The use of all water that is now or may hereafter be appropriated for sale, rent, distribution, or other beneficial use... shall be held to be a public use."</blockquote>
+            <p>Montana's Constitution establishes that water is a public resource. Combined with the Stream Access Law, this provides the constitutional foundation for public recreational access to all navigable waterways in the state.</p>
+        </div>
+
+        <!-- State Trust Lands -->
+        <div class="law-section" id="trust-lands">
+            <span class="tag land">Trust Lands</span>
+            <h2>State Trust Lands</h2>
+            <span class="cite"><a href="https://leg.mt.gov/bills/mca/title_0770/chapter_0010/part_0010/section_0010/0770-0010-0010-0010.html" target="_blank">MCA 77-1-101 et seq.</a></span>
+            <p>Montana manages approximately <strong>5.2 million acres of state trust lands</strong>, granted at statehood in 1889 to generate revenue for public schools and other institutions. Key access provisions:</p>
+            <ul>
+                <li><strong>MCA 77-1-203:</strong> DNRC manages state trust lands and may grant recreational use licenses</li>
+                <li><strong>MCA 77-1-801:</strong> The general land office recreational use license allows the public to use state trust lands for hunting, fishing, hiking, and other recreation unless specifically closed</li>
+                <li><strong>MCA 77-1-804:</strong> State trust lands are open to the public unless posted closed</li>
+            </ul>
+            <p>The challenge is that many state trust parcels are <strong>"landlocked"</strong> &mdash; entirely surrounded by private land with no legal public access route. This map identifies which state parcels can be reached via county roads and chains of adjacent public land.</p>
+        </div>
+
+        <!-- Constitution - Education Trust -->
+        <div class="law-section" id="constitution-education">
+            <span class="tag constitution">Constitution</span> <span class="tag land">Trust Lands</span>
+            <h2>Montana Constitution &mdash; School Trust</h2>
+            <span class="cite"><a href="https://leg.mt.gov/bills/mca/title_0000/article_0100/part_0010/section_0110/0000-0100-0010-0110.html" target="_blank">Article X, Section 11</a></span>
+            <blockquote>"The legislature shall provide for the administration, sale, and disposition of the public lands of the state... The funds... shall forever remain inviolate, guaranteed by the state against loss or diversion."</blockquote>
+            <p>The Montana Constitution requires that state trust lands be managed for the benefit of schools and other named institutions. Revenue generation is the primary obligation, but the state also grants recreational access where compatible with this trust responsibility.</p>
+        </div>
+
+        <!-- Recreational Use -->
+        <div class="law-section" id="recreation">
+            <span class="tag access">Access</span>
+            <h2>Recreational Use Statute</h2>
+            <span class="cite"><a href="https://leg.mt.gov/bills/mca/title_0700/chapter_0160/part_0030/section_0010/0700-0160-0030-0010.html" target="_blank">MCA 70-16-301 through 70-16-302</a></span>
+            <p>Montana's recreational use statute limits the liability of landowners who allow the public to use their land for recreation without charge. This encourages voluntary access by reducing legal risk for private landowners.</p>
+            <ul>
+                <li>Landowners who allow free recreational use owe no duty of care to recreational users (except for willful or wanton misconduct)</li>
+                <li>Applies to hunting, fishing, hiking, camping, sightseeing, and other outdoor recreation</li>
+            </ul>
+        </div>
+
+        <!-- Corner Crossing -->
+        <div class="law-section" id="corner-crossing">
+            <span class="tag access">Access</span> <span class="tag land">Trust Lands</span>
+            <h2>Corner Crossing &amp; Checkerboard Access</h2>
+            <span class="cite">Evolving legal landscape</span>
+            <p>The "checkerboard" pattern of alternating public and private land sections across the West creates a persistent access challenge. <strong>Corner crossing</strong> &mdash; stepping from one diagonal public section to another where they meet at a single point &mdash; remains a contested legal question.</p>
+            <ul>
+                <li>In <em>United States v. Iron Elk Ranch</em> (Wyoming, 2023), a federal jury acquitted hunters who corner-crossed to access public land</li>
+                <li>Montana has not formally addressed corner crossing in statute, but the issue is highly relevant to landlocked state trust land access</li>
+                <li>This map helps identify where state parcels are landlocked and where public land chains may provide alternative access routes</li>
+            </ul>
+            <p>Many of the "landlocked" state parcels identified on this map could potentially be accessed through corner crossing, but the legal status of that practice remains uncertain.</p>
+        </div>
+
+        <div class="disclaimer">
+            <strong>Disclaimer:</strong> This page is for informational and educational purposes only. It is not legal advice. Statute text is summarized and may not reflect the most current amendments. Always consult the <a href="https://leg.mt.gov/bills/mca_toc/" target="_blank" style="color:var(--accent)">official Montana Code Annotated</a> and a qualified attorney for legal guidance. Map data is derived from publicly available GIS sources and may contain inaccuracies.
+        </div>
+    </div>
+</body>
+</html>

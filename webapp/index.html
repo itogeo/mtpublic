@@ -11,17 +11,6 @@
 </head>
 <body>
 
-<!-- Token Modal -->
-<div id="token-modal" class="modal">
-    <div class="modal-content">
-        <h2>Montana Public Land Access</h2>
-        <p class="modal-sub">Interactive map of 15,000+ county road easement opportunities</p>
-        <input type="text" id="token-input" placeholder="Enter your Mapbox access token">
-        <button id="token-submit">Launch Map</button>
-        <p class="hint">Free token at <a href="https://account.mapbox.com" target="_blank">account.mapbox.com</a></p>
-    </div>
-</div>
-
 <!-- Sidebar -->
 <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
@@ -121,6 +110,28 @@
         </div>
     </div>
 
+    <!-- State Trust Land Access -->
+    <div class="section">
+        <h3>State Trust Land Access</h3>
+        <div class="checkbox-group">
+            <label><input type="checkbox" id="state-access-toggle"> Show State Parcels by Access</label>
+        </div>
+        <div class="checkbox-group" style="margin-top:0.4rem">
+            <div style="display:flex;gap:0.6rem;flex-wrap:wrap;font-size:0.75rem">
+                <span><span class="swatch" style="background:#22c55e"></span> Accessible</span>
+                <span><span class="swatch" style="background:#eab308"></span> Near-Miss</span>
+                <span><span class="swatch" style="background:#ef4444"></span> Landlocked</span>
+                <span><span class="swatch" style="background:#991b1b"></span> Enclosed</span>
+            </div>
+        </div>
+        <div class="legend-note" style="margin-top:0.4rem">
+            <strong>Accessible:</strong> connected to a county road via public land chain.<br>
+            <strong>Landlocked:</strong> no public land route to a road.<br>
+            <strong>Enclosed:</strong> landlocked AND entirely surrounded by a single private owner.<br>
+            Click any parcel for details.
+        </div>
+    </div>
+
     <!-- Cadastral / Ownership -->
     <div class="section">
         <h3>Cadastral / Ownership</h3>
@@ -141,6 +152,18 @@
             <label><input type="checkbox" class="road-toggle" data-layer="federal"> <span class="swatch" style="background:#86efac"></span> Federal Roads</label>
             <label><input type="checkbox" class="road-toggle" data-layer="private"> <span class="swatch" style="background:#fca5a5"></span> Private Roads</label>
             <label><input type="checkbox" class="road-toggle" data-layer="city"> <span class="swatch" style="background:#c4b5fd"></span> City Roads</label>
+        </div>
+    </div>
+
+    <!-- Water Layers -->
+    <div class="section">
+        <h3>Streams &amp; Water</h3>
+        <div class="checkbox-group">
+            <label><input type="checkbox" class="water-toggle" data-layer="streams"> <span class="swatch" style="background:#38bdf8"></span> Streams &amp; Rivers</label>
+            <label><input type="checkbox" class="water-toggle" data-layer="waterbodies"> <span class="swatch" style="background:#0ea5e9"></span> Lakes &amp; Reservoirs</label>
+        </div>
+        <div class="legend-note" style="margin-top:0.4rem">
+            Montana Stream Access Law (MCA 23-2-302): All surface water is available for public recreational use between ordinary high-water marks.
         </div>
     </div>
 
@@ -167,6 +190,7 @@
 
     <div class="section footer">
         <p>MCA 7-14-2112: County roads have a 60 ft statutory width (30 ft from centerline) unless otherwise specified in the road petition.</p>
+        <p style="margin-top:0.5rem"><a href="laws.html" style="color:#60a5fa;text-decoration:none;font-style:normal;font-weight:500">View Montana Access Laws &rarr;</a></p>
     </div>
 </div>
 
@@ -181,6 +205,7 @@
 
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@4.2.0/dist/pmtiles.js"></script>
+<script src="token.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

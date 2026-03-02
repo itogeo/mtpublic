@@ -5,8 +5,12 @@
 // Opportunities: Local GeoJSON from analysis pipeline
 
 // Register PMTiles protocol for Mapbox GL JS
-const pmtilesProtocol = new pmtiles.Protocol();
-mapboxgl.addProtocol('pmtiles', pmtilesProtocol.tile);
+try {
+    const pmtilesProtocol = new pmtiles.Protocol();
+    mapboxgl.addProtocol('pmtiles', pmtilesProtocol.tile);
+} catch (e) {
+    console.warn('PMTiles protocol not available:', e.message);
+}
 
 // ArcGIS tile export bases
 const MSDI_LANDS_BASE = 'https://gisservicemt.gov/arcgis/rest/services/MSDI_Framework/PublicLands/MapServer/export' +
@@ -16,6 +20,8 @@ const MSDI_ROADS_BASE = 'https://gisservicemt.gov/arcgis/rest/services/MSDI_Fram
 const DNRC_ACCESS_BASE = 'https://gis.dnrc.mt.gov/arcgis/rest/services/TLMD/AccessMap/MapServer/export' +
     '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image';
 const DNRC_TLMS_BASE = 'https://gis.dnrc.mt.gov/arcgis/rest/services/TLMD/TLMS/MapServer/export' +
+    '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image';
+const MSDI_HYDRO_BASE = 'https://gisservicemt.gov/arcgis/rest/services/MSDI_Framework/Hydrography/MapServer/export' +
     '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image';
 
 function msdiFiltered(ownerValues) {
@@ -76,6 +82,13 @@ const ROAD_LAYERS = {
                 url: roadFiltered(['City']) },
 };
 
+const WATER_LAYERS = {
+    streams:     { label: 'Streams & Rivers',    color: '#38bdf8', on: false,
+                   url: MSDI_HYDRO_BASE + '&layers=show:3' },
+    waterbodies: { label: 'Lakes & Reservoirs',  color: '#0ea5e9', on: false,
+                   url: MSDI_HYDRO_BASE + '&layers=show:5' },
+};
+
 const LAND_LABELS = {
     BLM:   'Bureau of Land Management',
     USFS:  'US Forest Service',
@@ -108,33 +121,16 @@ const OPP_CATEGORY_MAP = {
 
 let map;
 let allOpportunities = null;
+let stateAccessData = null;
 
-// ── Token ──
-function initToken() {
-    const saved = localStorage.getItem('mapbox_token');
-    if (saved) { startMap(saved); return; }
-    document.getElementById('token-modal').classList.remove('hidden');
-    document.getElementById('token-submit').addEventListener('click', submitToken);
-    document.getElementById('token-input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') submitToken();
-    });
-}
+// ── Map init ──
+// MAPBOX_TOKEN is loaded from token.js (gitignored)
 
-function submitToken() {
-    const token = document.getElementById('token-input').value.trim();
-    if (token) {
-        localStorage.setItem('mapbox_token', token);
-        startMap(token);
-    }
-}
-
-// ── Map ──
-function startMap(token) {
-    document.getElementById('token-modal').classList.add('hidden');
+function initMap() {
     document.getElementById('loading').classList.remove('hidden');
     updateLoadingText('Initializing map...');
 
-    mapboxgl.accessToken = token;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
     map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/outdoors-v12',
@@ -166,6 +162,16 @@ async function loadAllData() {
             f.properties._category = OPP_CATEGORY_MAP[cat] || 'OTHER';
         });
 
+        // Load state access data
+        updateLoadingText('Loading state access data...');
+        try {
+            const stateResp = await fetch('data/state_access.geojson');
+            stateAccessData = await stateResp.json();
+        } catch (e) {
+            console.warn('State access data not available:', e.message);
+            stateAccessData = null;
+        }
+
         addAllLayers();
         populateCountyFilter();
         updateStats();
@@ -174,7 +180,9 @@ async function loadAllData() {
         bindBasemap();
         bindLandToggle();
         bindRoadToggle();
+        bindWaterToggle();
         bindParcelToggle();
+        bindStateAccessToggle();
 
         document.getElementById('loading').classList.add('hidden');
     } catch (err) {
@@ -230,6 +238,23 @@ function addAllLayers() {
             source: 'roads-' + key,
             minzoom: 8,
             paint: { 'raster-opacity': 0.9 },
+            layout: { visibility: layer.on ? 'visible' : 'none' },
+        });
+    }
+
+    // === 2b. WATER TILE LAYERS ===
+    for (const [key, layer] of Object.entries(WATER_LAYERS)) {
+        map.addSource('water-' + key, {
+            type: 'raster',
+            tiles: [layer.url],
+            tileSize: 512,
+        });
+
+        map.addLayer({
+            id: 'water-' + key,
+            type: 'raster',
+            source: 'water-' + key,
+            paint: { 'raster-opacity': 0.8 },
             layout: { visibility: layer.on ? 'visible' : 'none' },
         });
     }
@@ -315,7 +340,100 @@ function addAllLayers() {
         layout: { visibility: 'none' },
     });
 
-    // === 4. OPPORTUNITY POINTS ===
+    // === 4. STATE ACCESS LAYER ===
+    if (stateAccessData) {
+        map.addSource('state-access', {
+            type: 'geojson',
+            data: stateAccessData,
+        });
+
+        // Color: enclosed parcels get a distinct dark maroon
+        const stateAccessColor = [
+            'case',
+            ['==', ['get', 'enclosed'], 'true'], '#991b1b',
+            ['match', ['get', 'access_status'],
+                'accessible', '#22c55e',
+                'near_miss',  '#eab308',
+                'landlocked', '#ef4444',
+                '#6b7280'],
+        ];
+        const stateAccessBorderColor = [
+            'case',
+            ['==', ['get', 'enclosed'], 'true'], '#7f1d1d',
+            ['match', ['get', 'access_status'],
+                'accessible', '#16a34a',
+                'near_miss',  '#ca8a04',
+                'landlocked', '#dc2626',
+                '#4b5563'],
+        ];
+
+        map.addLayer({
+            id: 'state-access-fill',
+            type: 'fill',
+            source: 'state-access',
+            paint: {
+                'fill-color': stateAccessColor,
+                'fill-opacity': 0.45,
+            },
+            layout: { visibility: 'none' },
+        });
+
+        map.addLayer({
+            id: 'state-access-border',
+            type: 'line',
+            source: 'state-access',
+            paint: {
+                'line-color': stateAccessBorderColor,
+                'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.5, 12, 2],
+                'line-opacity': 0.8,
+            },
+            layout: { visibility: 'none' },
+        });
+
+        map.on('click', 'state-access-fill', (e) => {
+            const f = e.features[0];
+            const p = f.properties;
+            const isEnclosed = p.enclosed === true || p.enclosed === 'true' || p.enclosed === 'True';
+            const statusColor = {accessible: '#22c55e', near_miss: '#eab308', landlocked: '#ef4444'};
+            const statusLabel = {accessible: 'Accessible', near_miss: 'Near-Miss', landlocked: 'Landlocked'};
+            const displayColor = isEnclosed ? '#991b1b' : (statusColor[p.access_status] || '#6b7280');
+            const displayLabel = isEnclosed ? 'Enclosed' : (statusLabel[p.access_status] || p.access_status);
+            const acres = p.area_acres ? Number(p.area_acres).toLocaleString() : '--';
+            const gapText = p.access_status === 'accessible'
+                ? 'Connected via public land'
+                : (p.gap_ft + ' ft gap');
+            const enclosedRow = isEnclosed && p.enclosing_owner
+                ? `<div class="popup-row"><span class="label">Enclosed By</span><span class="value" style="color:#fca5a5">${p.enclosing_owner}</span></div>`
+                : '';
+
+            new mapboxgl.Popup({ maxWidth: '320px', offset: 12 })
+                .setLngLat(e.lngLat)
+                .setHTML(`
+                    <div class="popup">
+                        <div class="popup-top state">
+                            <div class="popup-title">${p.land_owner || 'State Trust Land'}</div>
+                            <div class="popup-county">${p.county || ''}</div>
+                            <span class="badge" style="background:${displayColor}22;color:${displayColor}">${displayLabel}</span>
+                        </div>
+                        <div class="popup-body">
+                            <div class="popup-section">
+                                <div class="popup-row"><span class="label">Acres</span><span class="value">${acres}</span></div>
+                                <div class="popup-row"><span class="label">Status</span><span class="value">${gapText}</span></div>
+                                <div class="popup-row"><span class="label">Nearest Road</span><span class="value">${p.nearest_road || '--'}</span></div>
+                                ${p.access_via ? `<div class="popup-row"><span class="label">Access Via</span><span class="value">${p.access_via}</span></div>` : ''}
+                                ${enclosedRow}
+                            </div>
+                        </div>
+                    </div>
+                `)
+                .addTo(map);
+        });
+
+        map.on('mouseenter', 'state-access-fill', () => map.getCanvas().style.cursor = 'pointer');
+        map.on('mouseleave', 'state-access-fill', () => map.getCanvas().style.cursor = '');
+    }
+
+    // === 5. OPPORTUNITY POINTS ===
     map.addSource('opportunities', {
         type: 'geojson',
         data: allOpportunities,
@@ -402,7 +520,7 @@ function addAllLayers() {
     map.on('click', 'points', pointClick);
     map.on('click', mapClick);
 
-    ['points', 'clusters', 'parcel-fill'].forEach(l => {
+    ['points', 'clusters', 'parcel-fill', 'state-access-fill'].forEach(l => {
         map.on('mouseenter', l, () => map.getCanvas().style.cursor = 'pointer');
         map.on('mouseleave', l, () => map.getCanvas().style.cursor = '');
     });
@@ -467,8 +585,10 @@ function pointClick(e) {
 
 // ── Click: map background (parcel identify + owner highlight) ──
 function mapClick(e) {
-    // Skip if an opportunity point or cluster was clicked
-    const hits = map.queryRenderedFeatures(e.point, { layers: ['points', 'clusters'] });
+    // Skip if an opportunity point, cluster, or state access parcel was clicked
+    const skipLayers = ['points', 'clusters'];
+    if (map.getLayer('state-access-fill')) skipLayers.push('state-access-fill');
+    const hits = map.queryRenderedFeatures(e.point, { layers: skipLayers });
     if (hits.length > 0) return;
 
     // Check for parcel click (vector tile features)
@@ -622,6 +742,18 @@ function bindRoadToggle() {
     });
 }
 
+// ── Water layer toggles ──
+function bindWaterToggle() {
+    document.querySelectorAll('.water-toggle').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const layerId = 'water-' + cb.dataset.layer;
+            if (map.getLayer(layerId)) {
+                map.setLayoutProperty(layerId, 'visibility', cb.checked ? 'visible' : 'none');
+            }
+        });
+    });
+}
+
 // ── Parcel toggle ──
 const PARCEL_LAYERS = ['ownership-borders', 'parcel-borders', 'parcel-fill', 'parcel-highlight', 'parcel-highlight-border'];
 
@@ -634,6 +766,18 @@ function bindParcelToggle() {
             if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
         });
         if (!cb.checked) clearParcelHighlight();
+    });
+}
+
+// ── State access toggle ──
+function bindStateAccessToggle() {
+    const cb = document.getElementById('state-access-toggle');
+    if (!cb) return;
+    cb.addEventListener('change', () => {
+        const vis = cb.checked ? 'visible' : 'none';
+        ['state-access-fill', 'state-access-border'].forEach(id => {
+            if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+        });
     });
 }
 
@@ -695,4 +839,4 @@ function bindBasemap() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', initToken);
+document.addEventListener('DOMContentLoaded', initMap);

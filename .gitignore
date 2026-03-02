@@ -10,3 +10,6 @@ __pycache__/
 
 # Large generated files
 webapp/data/*.pmtiles
+
+# Secrets
+webapp/token.js
