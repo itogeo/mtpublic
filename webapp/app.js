@@ -831,6 +831,9 @@ function matchesFilter(p) {
     if (p.score < Number(document.getElementById('filter-score').value)) return false;
     if (p.gap_ft > Number(document.getElementById('filter-gap').value)) return false;
 
+    const minAcres = Number(document.getElementById('filter-acres').value);
+    if (minAcres > 0 && (p.land_area_acres || 0) < minAcres) return false;
+
     const county = document.getElementById('filter-county').value;
     if (county && p.county !== county) return false;
 
@@ -862,6 +865,12 @@ function bindFilters() {
     });
     gapSlider.addEventListener('change', applyFilters);
 
+    const acresSlider = document.getElementById('filter-acres');
+    acresSlider.addEventListener('input', () => {
+        document.getElementById('acres-value').textContent = Number(acresSlider.value).toLocaleString();
+    });
+    acresSlider.addEventListener('change', applyFilters);
+
     document.getElementById('filter-county').addEventListener('change', applyFilters);
 
     document.getElementById('reset-filters').addEventListener('click', () => {
@@ -871,6 +880,8 @@ function bindFilters() {
         document.getElementById('score-value').textContent = '0';
         gapSlider.value = 100;
         document.getElementById('gap-value').textContent = '100';
+        acresSlider.value = 0;
+        document.getElementById('acres-value').textContent = '0';
         document.getElementById('filter-county').value = '';
         map.getSource('opportunities').setData(allOpportunities);
         updateVisibleCount(allOpportunities.features.length);
