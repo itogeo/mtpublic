@@ -11,5 +11,8 @@ __pycache__/
 # Large generated files
 webapp/data/*.pmtiles
 
+# Wrangler cache
+.wrangler/
+
 # Secrets
 webapp/token.js

@@ -122,6 +122,7 @@ const OPP_CATEGORY_MAP = {
 let map;
 let allOpportunities = null;
 let stateAccessData = null;
+let unlockData = null;
 
 // ── Map init ──
 // MAPBOX_TOKEN is loaded from token.js (gitignored)
@@ -172,6 +173,16 @@ async function loadAllData() {
             stateAccessData = null;
         }
 
+        // Load unlock opportunities
+        updateLoadingText('Loading unlock opportunities...');
+        try {
+            const unlockResp = await fetch('data/unlock_opportunities.geojson');
+            unlockData = await unlockResp.json();
+        } catch (e) {
+            console.warn('Unlock data not available:', e.message);
+            unlockData = null;
+        }
+
         addAllLayers();
         populateCountyFilter();
         updateStats();
@@ -183,6 +194,7 @@ async function loadAllData() {
         bindWaterToggle();
         bindParcelToggle();
         bindStateAccessToggle();
+        bindUnlockToggle();
 
         document.getElementById('loading').classList.add('hidden');
     } catch (err) {
@@ -433,7 +445,144 @@ function addAllLayers() {
         map.on('mouseleave', 'state-access-fill', () => map.getCanvas().style.cursor = '');
     }
 
-    // === 5. OPPORTUNITY POINTS ===
+    // === 5. UNLOCK OPPORTUNITIES (strategic points) ===
+    if (unlockData) {
+        map.addSource('unlock-opps', {
+            type: 'geojson',
+            data: unlockData,
+        });
+
+        // Color by primary land category
+        const unlockColor = [
+            'match', ['get', 'primary_category'],
+            'BLM',   '#F59E0B',
+            'STATE', '#3B82F6',
+            'USFS',  '#22C55E',
+            'FWP',   '#A855F7',
+            'USFWS', '#EC4899',
+            '#94a3b8',
+        ];
+
+        // Outer glow — sized by total acres
+        map.addLayer({
+            id: 'unlock-glow',
+            type: 'circle',
+            source: 'unlock-opps',
+            paint: {
+                'circle-color': unlockColor,
+                'circle-radius': [
+                    'interpolate', ['linear'], ['get', 'total_acres'],
+                    10, 12, 500, 18, 5000, 28, 50000, 40,
+                ],
+                'circle-opacity': 0.15,
+                'circle-blur': 0.6,
+            },
+            layout: { visibility: 'none' },
+        });
+
+        // Inner dot — shaped like a diamond via icon or distinct circle
+        map.addLayer({
+            id: 'unlock-points',
+            type: 'circle',
+            source: 'unlock-opps',
+            paint: {
+                'circle-color': unlockColor,
+                'circle-radius': [
+                    'interpolate', ['linear'], ['get', 'total_acres'],
+                    10, 4, 500, 7, 5000, 11, 50000, 16,
+                ],
+                'circle-opacity': [
+                    'case',
+                    ['==', ['get', 'access_status'], 'near_miss'], 0.95,
+                    0.7,
+                ],
+                'circle-stroke-width': 2.5,
+                'circle-stroke-color': '#fff',
+                'circle-stroke-opacity': 0.9,
+            },
+            layout: { visibility: 'none' },
+        });
+
+        // Acres label at higher zoom
+        map.addLayer({
+            id: 'unlock-labels',
+            type: 'symbol',
+            source: 'unlock-opps',
+            minzoom: 9,
+            layout: {
+                'text-field': ['concat',
+                    ['to-string', ['round', ['get', 'total_acres']]],
+                    ' ac',
+                ],
+                'text-size': 10,
+                'text-offset': [0, -1.8],
+                'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+                visibility: 'none',
+            },
+            paint: {
+                'text-color': '#fff',
+                'text-halo-color': '#000',
+                'text-halo-width': 1,
+            },
+        });
+
+        // Click handler for unlock points
+        map.on('click', 'unlock-points', (e) => {
+            const f = e.features[0];
+            const p = f.properties;
+            const acres = Number(p.total_acres).toLocaleString();
+            const gap = Number(p.gap_ft).toFixed(1);
+            const isNearMiss = p.access_status === 'near_miss';
+            const statusBadge = isNearMiss
+                ? '<span class="badge nearmiss">Near-Miss</span>'
+                : '<span class="badge" style="background:rgba(239,68,68,0.15);color:#fca5a5">Landlocked</span>';
+
+            // Acre breakdown rows
+            const catRows = [];
+            if (Number(p.blm_acres) > 0) catRows.push(`<div class="popup-row"><span class="label"><span class="dot blm"></span> BLM</span><span class="value">${Number(p.blm_acres).toLocaleString()} ac</span></div>`);
+            if (Number(p.usfs_acres) > 0) catRows.push(`<div class="popup-row"><span class="label"><span class="dot usfs"></span> USFS</span><span class="value">${Number(p.usfs_acres).toLocaleString()} ac</span></div>`);
+            if (Number(p.state_acres) > 0) catRows.push(`<div class="popup-row"><span class="label"><span class="dot state"></span> State</span><span class="value">${Number(p.state_acres).toLocaleString()} ac</span></div>`);
+            if (Number(p.fwp_acres) > 0) catRows.push(`<div class="popup-row"><span class="label"><span class="dot fwp"></span> FWP</span><span class="value">${Number(p.fwp_acres).toLocaleString()} ac</span></div>`);
+            if (Number(p.other_acres) > 0) catRows.push(`<div class="popup-row"><span class="label">Other</span><span class="value">${Number(p.other_acres).toLocaleString()} ac</span></div>`);
+
+            new mapboxgl.Popup({ maxWidth: '340px', offset: 12 })
+                .setLngLat(e.lngLat)
+                .setHTML(`
+                    <div class="popup">
+                        <div class="popup-top unlock">
+                            <div class="popup-title">${p.road_name || 'Unnamed Road'}</div>
+                            <div class="popup-county">${p.county || ''}</div>
+                            ${statusBadge}
+                        </div>
+                        <div class="popup-body">
+                            <div class="popup-section">
+                                <div class="popup-section-title">Unlock Potential</div>
+                                <div class="popup-row"><span class="label">Total Acres</span><span class="value" style="font-weight:600;color:#fbbf24">${acres}</span></div>
+                                <div class="popup-row"><span class="label">Gap to Road</span><span class="value">${gap} ft</span></div>
+                                <div class="popup-row"><span class="label">Parcels</span><span class="value">${p.num_parcels}</span></div>
+                                <div class="popup-row"><span class="label">Score</span><span class="value">${Number(p.unlock_score).toLocaleString()}</span></div>
+                            </div>
+                            <div class="popup-section">
+                                <div class="popup-section-title">Land Types</div>
+                                ${catRows.join('')}
+                            </div>
+                            <div class="popup-section">
+                                <div class="popup-section-title">MCA 7-14-2112</div>
+                                <div style="font-size:0.75rem;color:var(--text-muted)">
+                                    County roads have a 60ft statutory width. Asserting this road's easement could bridge the ${gap}ft gap and unlock ${acres} acres of public land.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `)
+                .addTo(map);
+        });
+
+        map.on('mouseenter', 'unlock-points', () => map.getCanvas().style.cursor = 'pointer');
+        map.on('mouseleave', 'unlock-points', () => map.getCanvas().style.cursor = '');
+    }
+
+    // === 6. OPPORTUNITY POINTS ===
     map.addSource('opportunities', {
         type: 'geojson',
         data: allOpportunities,
@@ -802,6 +951,74 @@ function bindStateAccessToggle() {
             if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
         });
     });
+}
+
+// ── Unlock opportunities toggle ──
+const UNLOCK_LAYERS = ['unlock-glow', 'unlock-points', 'unlock-labels'];
+
+function bindUnlockToggle() {
+    const cb = document.getElementById('unlock-toggle');
+    if (!cb) return;
+
+    // Filter controls
+    const gapSlider = document.getElementById('unlock-gap-filter');
+    const acresSlider = document.getElementById('unlock-acres-filter');
+
+    cb.addEventListener('change', () => {
+        const vis = cb.checked ? 'visible' : 'none';
+        UNLOCK_LAYERS.forEach(id => {
+            if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+        });
+    });
+
+    function applyUnlockFilters() {
+        if (!unlockData) return;
+        const maxGap = gapSlider ? Number(gapSlider.value) : 500;
+        const minAcres = acresSlider ? Number(acresSlider.value) : 0;
+
+        if (document.getElementById('unlock-gap-value')) {
+            document.getElementById('unlock-gap-value').textContent = maxGap;
+        }
+        if (document.getElementById('unlock-acres-value')) {
+            document.getElementById('unlock-acres-value').textContent = minAcres;
+        }
+
+        const filtered = {
+            type: 'FeatureCollection',
+            features: unlockData.features.filter(f => {
+                const p = f.properties;
+                return Number(p.gap_ft) <= maxGap && Number(p.total_acres) >= minAcres;
+            }),
+        };
+        if (map.getSource('unlock-opps')) {
+            map.getSource('unlock-opps').setData(filtered);
+        }
+
+        // Update count
+        const countEl = document.getElementById('unlock-count');
+        if (countEl) {
+            const totalAcres = filtered.features.reduce((s, f) => s + Number(f.properties.total_acres), 0);
+            countEl.textContent = `${filtered.features.length.toLocaleString()} opportunities — ${totalAcres.toLocaleString()} acres`;
+        }
+    }
+
+    if (gapSlider) {
+        gapSlider.addEventListener('input', applyUnlockFilters);
+        gapSlider.addEventListener('change', applyUnlockFilters);
+    }
+    if (acresSlider) {
+        acresSlider.addEventListener('input', applyUnlockFilters);
+        acresSlider.addEventListener('change', applyUnlockFilters);
+    }
+
+    // Initialize count
+    if (unlockData) {
+        const countEl = document.getElementById('unlock-count');
+        if (countEl) {
+            const totalAcres = unlockData.features.reduce((s, f) => s + Number(f.properties.total_acres), 0);
+            countEl.textContent = `${unlockData.features.length.toLocaleString()} opportunities — ${totalAcres.toLocaleString()} acres`;
+        }
+    }
 }
 
 // ── County dropdown ──

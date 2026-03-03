@@ -132,6 +132,32 @@
         </div>
     </div>
 
+    <!-- Unlock Opportunities -->
+    <div class="section">
+        <h3>Unlock Opportunities</h3>
+        <div class="checkbox-group">
+            <label><input type="checkbox" id="unlock-toggle"> Show Unlock Points</label>
+        </div>
+        <div id="unlock-count" style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem">--</div>
+        <div class="filter-group" style="margin-top:0.5rem">
+            <label class="filter-label">Max Gap: <strong id="unlock-gap-value">500</strong> ft</label>
+            <input type="range" id="unlock-gap-filter" min="0" max="2000" value="500" step="25">
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Min Acres: <strong id="unlock-acres-value">0</strong></label>
+            <input type="range" id="unlock-acres-filter" min="0" max="1000" value="0" step="10">
+        </div>
+        <div class="legend-note" style="margin-top:0.4rem">
+            Each point = a county road near landlocked public land. Asserting the road's 60ft MCA 7-14-2112 easement could bridge the gap and unlock the connected acres. Larger dots = more acres. Click for details.
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;font-size:0.72rem;margin-top:0.3rem">
+            <span><span class="dot blm"></span> BLM</span>
+            <span><span class="dot usfs"></span> USFS</span>
+            <span><span class="dot state"></span> State</span>
+            <span><span class="dot fwp"></span> FWP</span>
+        </div>
+    </div>
+
     <!-- Cadastral / Ownership -->
     <div class="section">
         <h3>Cadastral / Ownership</h3>

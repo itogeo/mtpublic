@@ -153,12 +153,20 @@ def process_parcels(gdb_path):
             lambda s: bool(s) and str(s).strip().upper() not in ('MT', 'MONTANA', '')
         )
 
-    # Build "real owner" field — use CareOfTaxpayer or DBA when available
+    # Build "real owner" field — use CareOfTaxpayer, DBA, or known owner lookup
+    from owner_lookup import lookup_real_owner
+
     def get_real_owner(row):
+        # Priority 1: Known owner lookup (researched from SOS filings / public records)
+        looked_up, _ = lookup_real_owner(row.get('OwnerName', ''))
+        if looked_up:
+            return looked_up
+        # Priority 2: CareOfTaxpayer from cadastral data
         care = row.get('CareOfTaxpayer', '') or ''
-        dba = row.get('DbaName', '') or ''
         if care.strip():
             return care.strip()
+        # Priority 3: DBA name
+        dba = row.get('DbaName', '') or ''
         if dba.strip():
             return dba.strip()
         return ''
@@ -170,7 +178,7 @@ def process_parcels(gdb_path):
     real_owner_count = (gdf['real_owner'] != '').sum()
     print(f"    Owner types: {dict(owner_type_counts)}")
     print(f"    Out-of-state: {oos_count:,}")
-    print(f"    With real owner (CareOf/DBA): {real_owner_count:,}")
+    print(f"    With real owner (CareOf/DBA/lookup): {real_owner_count:,}")
 
     # Round numeric fields
     for col in ['TotalAcres', 'GISAcres']:

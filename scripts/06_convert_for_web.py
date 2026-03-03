@@ -112,7 +112,7 @@ def export_all_lands(output_dir):
 
 def export_state_access(output_dir):
     """Export state access parcels as GeoJSON for web map."""
-    print("\n  [4/4] State access parcels (polygons)...")
+    print("\n  [4/5] State access parcels (polygons)...")
     input_path = config.RESULTS_DIR / "state_access.gpkg"
     if not input_path.exists():
         print(f"    Skipping: {input_path} not found (run 03_state_access.py)")
@@ -137,6 +137,38 @@ def export_state_access(output_dir):
     write_geojson(gdf, output_dir / "state_access.geojson", "State Access")
 
 
+def export_unlock_opportunities(output_dir):
+    """Export unlock opportunities as GeoJSON for web map."""
+    print("\n  [5/5] Unlock opportunities (points)...")
+    input_path = config.RESULTS_DIR / "unlock_opportunities.gpkg"
+    if not input_path.exists():
+        print(f"    Skipping: {input_path} not found (run 03b_unlock_analysis.py)")
+        return
+
+    gdf = gpd.read_file(input_path)
+    gdf = gdf.to_crs(epsg=4326)
+
+    # Round coordinates
+    gdf.geometry = gdf.geometry.apply(
+        lambda g: type(g)([round(c, 6) for c in g.coords[0]]) if g else g
+    )
+
+    # Round numeric fields
+    for col in ['gap_ft', 'total_acres', 'unlock_score',
+                'blm_acres', 'usfs_acres', 'state_acres', 'fwp_acres', 'other_acres']:
+        if col in gdf.columns:
+            gdf[col] = gdf[col].round(1)
+
+    # Summary
+    print(f"      Total: {len(gdf):,} unlock opportunities")
+    nm = gdf[gdf['access_status'] == 'near_miss']
+    ll = gdf[gdf['access_status'] == 'landlocked']
+    print(f"      Near-miss: {len(nm):,} ({nm['total_acres'].sum():,.0f} acres)")
+    print(f"      Landlocked: {len(ll):,} ({ll['total_acres'].sum():,.0f} acres)")
+
+    write_geojson(gdf, output_dir / "unlock_opportunities.geojson", "Unlock Opps")
+
+
 def main():
     print_header("CONVERTING RESULTS FOR WEB MAP")
 
@@ -152,6 +184,7 @@ def main():
 
     export_all_lands(output_dir)
     export_state_access(output_dir)
+    export_unlock_opportunities(output_dir)
 
     total_size = sum(
         f.stat().st_size for f in output_dir.glob("*.geojson")
