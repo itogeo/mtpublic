@@ -123,6 +123,7 @@ let map;
 let allOpportunities = null;
 let stateAccessData = null;
 let unlockData = null;
+let dnrcAccessData = null;
 
 // ── Map init ──
 // MAPBOX_TOKEN is loaded from token.js (gitignored)
@@ -183,6 +184,16 @@ async function loadAllData() {
             unlockData = null;
         }
 
+        // Load DNRC access data
+        updateLoadingText('Loading DNRC access data...');
+        try {
+            const dnrcResp = await fetch('data/dnrc_access.geojson');
+            dnrcAccessData = await dnrcResp.json();
+        } catch (e) {
+            console.warn('DNRC access data not available:', e.message);
+            dnrcAccessData = null;
+        }
+
         addAllLayers();
         populateCountyFilter();
         updateStats();
@@ -194,6 +205,7 @@ async function loadAllData() {
         bindWaterToggle();
         bindParcelToggle();
         bindStateAccessToggle();
+        bindDnrcAccessToggle();
         bindUnlockToggle();
 
         document.getElementById('loading').classList.add('hidden');
@@ -352,7 +364,112 @@ function addAllLayers() {
         layout: { visibility: 'none' },
     });
 
-    // === 4. STATE ACCESS LAYER ===
+    // === 4a. DNRC ACCESS LAYER ===
+    if (dnrcAccessData) {
+        map.addSource('dnrc-access', {
+            type: 'geojson',
+            data: dnrcAccessData,
+        });
+
+        // Color: confirmed=blue (road unlocks it), near_miss=yellow,
+        // landlocked=red (DNRC closed, no road), public_access=green
+        const dnrcFillColor = [
+            'match', ['get', 'access_status'],
+            'public_access', '#22c55e',
+            'confirmed',     '#3b82f6',
+            'near_miss',     '#eab308',
+            'landlocked',    '#ef4444',
+            '#6b7280',
+        ];
+        const dnrcBorderColor = [
+            'match', ['get', 'access_status'],
+            'public_access', '#16a34a',
+            'confirmed',     '#2563eb',
+            'near_miss',     '#ca8a04',
+            'landlocked',    '#dc2626',
+            '#4b5563',
+        ];
+
+        map.addLayer({
+            id: 'dnrc-access-fill',
+            type: 'fill',
+            source: 'dnrc-access',
+            paint: {
+                'fill-color': dnrcFillColor,
+                'fill-opacity': 0.45,
+            },
+            layout: { visibility: 'none' },
+        });
+
+        map.addLayer({
+            id: 'dnrc-access-border',
+            type: 'line',
+            source: 'dnrc-access',
+            paint: {
+                'line-color': dnrcBorderColor,
+                'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.5, 12, 2],
+                'line-opacity': 0.8,
+            },
+            layout: { visibility: 'none' },
+        });
+
+        // Click handler for DNRC parcels
+        map.on('click', 'dnrc-access-fill', (e) => {
+            const f = e.features[0];
+            const p = f.properties;
+            const statusColor = {
+                public_access: '#22c55e', confirmed: '#3b82f6',
+                near_miss: '#eab308', landlocked: '#ef4444',
+            };
+            const statusLabel = {
+                public_access: 'Public Access',
+                confirmed: 'Road Unlockable',
+                near_miss: 'Near-Miss',
+                landlocked: 'No Access',
+            };
+            const color = statusColor[p.access_status] || '#6b7280';
+            const label = statusLabel[p.access_status] || p.access_status;
+            const acres = p.Acres ? Number(p.Acres).toLocaleString() : '--';
+            const gapText = p.access_status === 'public_access'
+                ? (p.AccessLoc || 'Designated public access')
+                : p.access_status === 'confirmed'
+                ? 'Road buffer touches parcel'
+                : (p.gap_ft ? p.gap_ft + ' ft gap to nearest road' : '--');
+
+            new mapboxgl.Popup({ maxWidth: '340px', offset: 12 })
+                .setLngLat(e.lngLat)
+                .setHTML(`
+                    <div class="popup">
+                        <div class="popup-top dnrc">
+                            <div class="popup-title">${p.TractID || 'DNRC Trust Land'}</div>
+                            <div class="popup-county">${p.road_county || ''}</div>
+                            <span class="badge" style="background:${color}22;color:${color}">${label}</span>
+                        </div>
+                        <div class="popup-body">
+                            <div class="popup-section">
+                                <div class="popup-row"><span class="label">Acres</span><span class="value">${acres}</span></div>
+                                <div class="popup-row"><span class="label">TRS</span><span class="value">${p.TRS || '--'}</span></div>
+                                <div class="popup-row"><span class="label">Unit</span><span class="value">${p.Unit || '--'}</span></div>
+                                <div class="popup-row"><span class="label">Grant</span><span class="value">${p.GrantID || '--'}</span></div>
+                            </div>
+                            <div class="popup-section">
+                                <div class="popup-section-title">Access Details</div>
+                                <div class="popup-row"><span class="label">DNRC Status</span><span class="value">${p.Access_Type || '--'}</span></div>
+                                <div class="popup-row"><span class="label">Analysis</span><span class="value">${gapText}</span></div>
+                                ${p.nearest_road ? `<div class="popup-row"><span class="label">Nearest Road</span><span class="value">${p.nearest_road}</span></div>` : ''}
+                            </div>
+                            ${p.LegDescrip ? `<div class="popup-section"><div class="popup-section-title">Legal</div><div style="font-size:0.72rem;color:var(--text-muted);word-wrap:break-word">${p.LegDescrip}</div></div>` : ''}
+                        </div>
+                    </div>
+                `)
+                .addTo(map);
+        });
+
+        map.on('mouseenter', 'dnrc-access-fill', () => map.getCanvas().style.cursor = 'pointer');
+        map.on('mouseleave', 'dnrc-access-fill', () => map.getCanvas().style.cursor = '');
+    }
+
+    // === 4b. STATE ACCESS LAYER ===
     if (stateAccessData) {
         map.addSource('state-access', {
             type: 'geojson',
@@ -669,7 +786,7 @@ function addAllLayers() {
     map.on('click', 'points', pointClick);
     map.on('click', mapClick);
 
-    ['points', 'clusters', 'parcel-fill', 'state-access-fill'].forEach(l => {
+    ['points', 'clusters', 'parcel-fill', 'dnrc-access-fill', 'state-access-fill'].forEach(l => {
         map.on('mouseenter', l, () => map.getCanvas().style.cursor = 'pointer');
         map.on('mouseleave', l, () => map.getCanvas().style.cursor = '');
     });
@@ -736,6 +853,7 @@ function pointClick(e) {
 function mapClick(e) {
     // Skip if an opportunity point, cluster, or state access parcel was clicked
     const skipLayers = ['points', 'clusters'];
+    if (map.getLayer('dnrc-access-fill')) skipLayers.push('dnrc-access-fill');
     if (map.getLayer('state-access-fill')) skipLayers.push('state-access-fill');
     const hits = map.queryRenderedFeatures(e.point, { layers: skipLayers });
     if (hits.length > 0) return;
@@ -950,6 +1068,35 @@ function bindParcelToggle() {
         });
         if (!cb.checked) clearParcelHighlight();
     });
+}
+
+// ── DNRC access toggle ──
+function bindDnrcAccessToggle() {
+    const cb = document.getElementById('dnrc-access-toggle');
+    if (!cb) return;
+    cb.addEventListener('change', () => {
+        const vis = cb.checked ? 'visible' : 'none';
+        ['dnrc-access-fill', 'dnrc-access-border'].forEach(id => {
+            if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+        });
+    });
+
+    // Show stats
+    if (dnrcAccessData) {
+        const statsEl = document.getElementById('dnrc-stats');
+        if (statsEl) {
+            const confirmed = dnrcAccessData.features.filter(f => f.properties.access_status === 'confirmed');
+            const nearMiss = dnrcAccessData.features.filter(f => f.properties.access_status === 'near_miss');
+            const landlocked = dnrcAccessData.features.filter(f => f.properties.access_status === 'landlocked');
+            const publicAcc = dnrcAccessData.features.filter(f => f.properties.access_status === 'public_access');
+            const sumAcres = arr => arr.reduce((s, f) => s + (Number(f.properties.Acres) || 0), 0);
+            statsEl.innerHTML = `
+                <strong>${confirmed.length + nearMiss.length}</strong> closed parcels near county roads
+                (${sumAcres(confirmed).toLocaleString()} + ${sumAcres(nearMiss).toLocaleString()} = <strong>${sumAcres([...confirmed, ...nearMiss]).toLocaleString()} acres</strong> unlockable)<br>
+                ${landlocked.length.toLocaleString()} closed / ${publicAcc.length.toLocaleString()} open
+            `;
+        }
+    }
 }
 
 // ── State access toggle ──

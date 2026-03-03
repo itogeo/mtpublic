@@ -169,6 +169,42 @@ def export_unlock_opportunities(output_dir):
     write_geojson(gdf, output_dir / "unlock_opportunities.geojson", "Unlock Opps")
 
 
+def export_dnrc_access(output_dir):
+    """Export DNRC trust land access analysis as GeoJSON for web map."""
+    print("\n  [6/6] DNRC access parcels (polygons)...")
+    input_path = config.RESULTS_DIR / "dnrc_access.gpkg"
+    if not input_path.exists():
+        print(f"    Skipping: {input_path} not found (run 04_dnrc_access.py)")
+        return
+
+    gdf = gpd.read_file(input_path)
+    gdf = gdf.to_crs(epsg=4326)
+
+    # Simplify for web (~100m tolerance)
+    gdf['geometry'] = gdf.geometry.simplify(0.001)
+
+    # Round numeric fields
+    for col in ['gap_ft', 'Acres', 'TLMSAcres']:
+        if col in gdf.columns:
+            gdf[col] = gdf[col].round(1)
+
+    # Keep useful columns only
+    keep_cols = [
+        'geometry', 'access_status', 'dnrc_status', 'gap_ft',
+        'nearest_road', 'road_county', 'Acres', 'TRS', 'TractID',
+        'Access_Type', 'AccessLoc', 'Unit', 'GrantID', 'LegDescrip',
+    ]
+    gdf = gdf[[c for c in keep_cols if c in gdf.columns]]
+
+    # Summary
+    for status in ['confirmed', 'near_miss', 'landlocked', 'public_access']:
+        count = len(gdf[gdf['access_status'] == status])
+        acres = gdf[gdf['access_status'] == status]['Acres'].sum() if 'Acres' in gdf.columns else 0
+        print(f"      {status}: {count:,} ({acres:,.0f} ac)")
+
+    write_geojson(gdf, output_dir / "dnrc_access.geojson", "DNRC Access")
+
+
 def main():
     print_header("CONVERTING RESULTS FOR WEB MAP")
 
@@ -185,6 +221,7 @@ def main():
     export_all_lands(output_dir)
     export_state_access(output_dir)
     export_unlock_opportunities(output_dir)
+    export_dnrc_access(output_dir)
 
     total_size = sum(
         f.stat().st_size for f in output_dir.glob("*.geojson")
