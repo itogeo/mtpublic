@@ -364,29 +364,33 @@ function addAllLayers() {
         layout: { visibility: 'none' },
     });
 
-    // === 4a. DNRC ACCESS LAYER ===
+    // === 4a. DNRC UNLOCKABLE PARCELS (only confirmed + near_miss) ===
     if (dnrcAccessData) {
+        // Filter to only the unlockable parcels (closed + near a road)
+        const unlockableDnrc = {
+            type: 'FeatureCollection',
+            features: dnrcAccessData.features.filter(f =>
+                f.properties.access_status === 'confirmed' ||
+                f.properties.access_status === 'near_miss'
+            ),
+        };
+
         map.addSource('dnrc-access', {
             type: 'geojson',
-            data: dnrcAccessData,
+            data: unlockableDnrc,
         });
 
-        // Color: confirmed=blue (road unlocks it), near_miss=yellow,
-        // landlocked=red (DNRC closed, no road), public_access=green
+        // Color: confirmed=blue (road touches), near_miss=yellow
         const dnrcFillColor = [
             'match', ['get', 'access_status'],
-            'public_access', '#22c55e',
             'confirmed',     '#3b82f6',
             'near_miss',     '#eab308',
-            'landlocked',    '#ef4444',
             '#6b7280',
         ];
         const dnrcBorderColor = [
             'match', ['get', 'access_status'],
-            'public_access', '#16a34a',
             'confirmed',     '#2563eb',
             'near_miss',     '#ca8a04',
-            'landlocked',    '#dc2626',
             '#4b5563',
         ];
 
@@ -417,24 +421,13 @@ function addAllLayers() {
         map.on('click', 'dnrc-access-fill', (e) => {
             const f = e.features[0];
             const p = f.properties;
-            const statusColor = {
-                public_access: '#22c55e', confirmed: '#3b82f6',
-                near_miss: '#eab308', landlocked: '#ef4444',
-            };
-            const statusLabel = {
-                public_access: 'Public Access',
-                confirmed: 'Road Unlockable',
-                near_miss: 'Near-Miss',
-                landlocked: 'No Access',
-            };
-            const color = statusColor[p.access_status] || '#6b7280';
-            const label = statusLabel[p.access_status] || p.access_status;
+            const isConfirmed = p.access_status === 'confirmed';
+            const color = isConfirmed ? '#3b82f6' : '#eab308';
+            const label = isConfirmed ? 'Road Unlockable' : 'Near-Miss';
             const acres = p.Acres ? Number(p.Acres).toLocaleString() : '--';
-            const gapText = p.access_status === 'public_access'
-                ? (p.AccessLoc || 'Designated public access')
-                : p.access_status === 'confirmed'
-                ? 'Road buffer touches parcel'
-                : (p.gap_ft ? p.gap_ft + ' ft gap to nearest road' : '--');
+            const gapText = isConfirmed
+                ? 'County road 30ft easement touches this parcel'
+                : (p.gap_ft ? p.gap_ft + ' ft gap to nearest county road' : '--');
 
             new mapboxgl.Popup({ maxWidth: '340px', offset: 12 })
                 .setLngLat(e.lngLat)
@@ -1087,13 +1080,12 @@ function bindDnrcAccessToggle() {
         if (statsEl) {
             const confirmed = dnrcAccessData.features.filter(f => f.properties.access_status === 'confirmed');
             const nearMiss = dnrcAccessData.features.filter(f => f.properties.access_status === 'near_miss');
-            const landlocked = dnrcAccessData.features.filter(f => f.properties.access_status === 'landlocked');
-            const publicAcc = dnrcAccessData.features.filter(f => f.properties.access_status === 'public_access');
             const sumAcres = arr => arr.reduce((s, f) => s + (Number(f.properties.Acres) || 0), 0);
+            const totalParcels = confirmed.length + nearMiss.length;
+            const totalAcres = sumAcres([...confirmed, ...nearMiss]);
             statsEl.innerHTML = `
-                <strong>${confirmed.length + nearMiss.length}</strong> closed parcels near county roads
-                (${sumAcres(confirmed).toLocaleString()} + ${sumAcres(nearMiss).toLocaleString()} = <strong>${sumAcres([...confirmed, ...nearMiss]).toLocaleString()} acres</strong> unlockable)<br>
-                ${landlocked.length.toLocaleString()} closed / ${publicAcc.length.toLocaleString()} open
+                <strong>${totalParcels}</strong> closed parcels near roads &mdash; <strong>${totalAcres.toLocaleString()} acres</strong><br>
+                ${confirmed.length} confirmed (road touches) + ${nearMiss.length} near-miss
             `;
         }
     }

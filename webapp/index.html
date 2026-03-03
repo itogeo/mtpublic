@@ -115,30 +115,25 @@
         </div>
     </div>
 
-    <!-- DNRC Trust Land Access -->
+    <!-- DNRC Closed Parcels Near Roads -->
     <div class="section">
-        <h3>DNRC Trust Land Access</h3>
+        <h3>Unlockable DNRC Parcels</h3>
         <div class="checkbox-group">
-            <label><input type="checkbox" id="dnrc-access-toggle"> Show DNRC Parcels by Access</label>
+            <label><input type="checkbox" id="dnrc-access-toggle"> Show closed parcels near county roads</label>
         </div>
         <div class="checkbox-group" style="margin-top:0.4rem">
             <div style="display:flex;gap:0.6rem;flex-wrap:wrap;font-size:0.75rem">
-                <span><span class="swatch" style="background:#22c55e"></span> Public Access</span>
-                <span><span class="swatch" style="background:#3b82f6"></span> Road Unlockable</span>
-                <span><span class="swatch" style="background:#eab308"></span> Near-Miss</span>
-                <span><span class="swatch" style="background:#ef4444"></span> No Access</span>
+                <span><span class="swatch" style="background:#3b82f6"></span> Road Touches Parcel</span>
+                <span><span class="swatch" style="background:#eab308"></span> Near-Miss (&lt;100ft)</span>
             </div>
         </div>
         <div id="dnrc-stats" style="margin-top:0.4rem;font-size:0.75rem;color:var(--text-muted)"></div>
         <div class="legend-note" style="margin-top:0.4rem">
-            <strong>Road Unlockable:</strong> county road's 30ft easement touches this closed parcel.<br>
-            <strong>Near-Miss:</strong> county road within 100ft of this closed parcel.<br>
-            <strong>No Access:</strong> DNRC-designated closed to public, no nearby road.<br>
-            Click any parcel for details.
+            263 DNRC "No Public Access" parcels where a county road's 30ft statutory easement could provide access. Toggle on the DNRC layers above for full red/green context. Click any parcel for details.
         </div>
     </div>
 
-    <!-- State Trust Land Access (graph analysis) -->
+    <!-- State Trust Connectivity (graph analysis) -->
     <div class="section">
         <h3>State Trust Connectivity</h3>
         <div class="checkbox-group">
