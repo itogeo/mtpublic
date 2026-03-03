@@ -29,10 +29,13 @@ PARCELS_DIR = config.DATA_DIR / 'parcels'
 # Output
 WEBAPP_DATA = Path(__file__).parent.parent / 'webapp' / 'data'
 
-# Fields to keep (minimizes GeoJSON size)
+# Fields to keep — expanded for full ownership tracing
 KEEP_FIELDS = [
-    'OwnerName', 'PropType', 'TotalAcres', 'TotalValue',
+    'OwnerName', 'DbaName', 'CareOfTaxpayer',
+    'OwnerAddress1', 'OwnerCity', 'OwnerState', 'OwnerZipCode',
+    'PropType', 'TotalAcres', 'TotalValue', 'TotalLandValue',
     'CountyName', 'AddressLine1', 'CityStateZip', 'GISAcres',
+    'LegalDescriptionShort', 'Section', 'Township', 'Range',
 ]
 
 
@@ -121,6 +124,54 @@ def process_parcels(gdb_path):
     # Add owner hash for client-side matching
     gdf['owner_id'] = gdf['OwnerName'].apply(owner_hash)
 
+    # Classify owner type
+    def classify_owner(name):
+        if pd.isna(name) or not name:
+            return 'unknown'
+        upper = str(name).upper().strip()
+        gov_keywords = [
+            'STATE OF MONTANA', 'MONTANA STATE', 'UNITED STATES',
+            'US GOVERNMENT', 'US BUREAU', 'US FOREST', 'NATIONAL PARK',
+            'BUREAU OF LAND', 'DEPT OF', 'DEPARTMENT OF', 'COUNTY',
+            'CITY OF', 'FISH WILDLIFE', 'MONTANA DNRC',
+        ]
+        if any(kw in upper for kw in gov_keywords):
+            return 'government'
+        corp_keywords = ['LLC', 'INC', 'CORP', 'LTD', ' LP', 'PARTNERSHIP', 'COMPANY', ' CO ']
+        if any(kw in upper or upper.endswith(kw.strip()) for kw in corp_keywords):
+            return 'corporate'
+        if 'TRUST' in upper or 'ESTATE OF' in upper or 'REVOCABLE' in upper:
+            return 'trust'
+        return 'individual'
+
+    gdf['owner_type'] = gdf['OwnerName'].apply(classify_owner)
+
+    # Flag out-of-state owners
+    gdf['out_of_state'] = False
+    if 'OwnerState' in gdf.columns:
+        gdf['out_of_state'] = gdf['OwnerState'].apply(
+            lambda s: bool(s) and str(s).strip().upper() not in ('MT', 'MONTANA', '')
+        )
+
+    # Build "real owner" field — use CareOfTaxpayer or DBA when available
+    def get_real_owner(row):
+        care = row.get('CareOfTaxpayer', '') or ''
+        dba = row.get('DbaName', '') or ''
+        if care.strip():
+            return care.strip()
+        if dba.strip():
+            return dba.strip()
+        return ''
+
+    gdf['real_owner'] = gdf.apply(get_real_owner, axis=1)
+
+    owner_type_counts = gdf['owner_type'].value_counts()
+    oos_count = gdf['out_of_state'].sum()
+    real_owner_count = (gdf['real_owner'] != '').sum()
+    print(f"    Owner types: {dict(owner_type_counts)}")
+    print(f"    Out-of-state: {oos_count:,}")
+    print(f"    With real owner (CareOf/DBA): {real_owner_count:,}")
+
     # Round numeric fields
     for col in ['TotalAcres', 'GISAcres']:
         if col in gdf.columns:
@@ -162,15 +213,20 @@ def export_ownership_blocks(gdf, output_path):
             continue
 
         try:
+            agg = {
+                'OwnerName': 'first',
+                'TotalAcres': 'sum',
+                'CountyName': 'first',
+            }
+            for f in ['PropType', 'owner_type', 'out_of_state', 'real_owner',
+                       'OwnerCity', 'OwnerState']:
+                if f in chunk.columns:
+                    agg[f] = 'first'
+
             dissolved = chunk.dissolve(
                 by='owner_id',
                 sort=False,
-                aggfunc={
-                    'OwnerName': 'first',
-                    'TotalAcres': 'sum',
-                    'CountyName': 'first',
-                    **({'PropType': 'first'} if 'PropType' in chunk.columns else {}),
-                },
+                aggfunc=agg,
             )
             dissolved['parcel_count'] = chunk.groupby('owner_id').size().values
             dissolved = dissolved.reset_index()

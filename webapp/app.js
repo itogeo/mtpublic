@@ -603,31 +603,54 @@ function mapClick(e) {
     const ownerId = p.owner_id || '';
     const acres = p.TotalAcres ? Number(p.TotalAcres).toLocaleString(undefined, {maximumFractionDigits: 1}) : (p.GISAcres ? Number(p.GISAcres).toLocaleString(undefined, {maximumFractionDigits: 1}) : '--');
     const value = p.TotalValue ? '$' + Number(p.TotalValue).toLocaleString() : '--';
+    const landValue = p.TotalLandValue ? '$' + Number(p.TotalLandValue).toLocaleString() : '';
+
+    // Owner type badge
+    const ownerTypeColors = {
+        corporate: { bg: 'rgba(239,68,68,0.15)', fg: '#fca5a5', label: 'Corporate' },
+        trust:     { bg: 'rgba(168,85,247,0.15)', fg: '#c084fc', label: 'Trust' },
+        government:{ bg: 'rgba(59,130,246,0.15)', fg: '#93c5fd', label: 'Government' },
+        individual:{ bg: 'rgba(34,197,94,0.15)',  fg: '#86efac', label: 'Individual' },
+    };
+    const ot = ownerTypeColors[p.owner_type] || { bg: 'rgba(148,163,184,0.15)', fg: '#94a3b8', label: p.owner_type || 'Unknown' };
+    const isOOS = p.out_of_state === true || p.out_of_state === 'true' || p.out_of_state === 'True';
+
+    // Real owner (from CareOfTaxpayer or DbaName)
+    const realOwner = p.real_owner && p.real_owner !== '' ? p.real_owner : '';
+    const ownerLocation = [p.OwnerCity, p.OwnerState].filter(Boolean).join(', ');
+    const legal = p.LegalDescriptionShort || '';
+    const trs = [p.Township, p.Range, p.Section].filter(Boolean).join(' / ');
 
     // Highlight ALL parcels with same owner
     map.setFilter('parcel-highlight', ['==', 'owner_id', ownerId]);
     map.setFilter('parcel-highlight-border', ['==', 'owner_id', ownerId]);
 
-    new mapboxgl.Popup({ maxWidth: '320px', offset: 12 })
+    new mapboxgl.Popup({ maxWidth: '340px', offset: 12 })
         .setLngLat(e.lngLat)
         .setHTML(`
             <div class="popup">
                 <div class="popup-top parcel">
                     <div class="popup-title">${p.OwnerName || 'Unknown Owner'}</div>
-                    <div class="popup-county">${p.CountyName || ''} County</div>
-                    <span class="badge parcel-badge">${p.PropType || 'Parcel'}</span>
+                    ${realOwner ? `<div class="popup-county" style="color:#fbbf24">Actual: ${realOwner}</div>` : ''}
+                    <div class="popup-county">${p.CountyName || ''} County${ownerLocation ? ' &bull; ' + ownerLocation : ''}</div>
+                    <span class="badge" style="background:${ot.bg};color:${ot.fg}">${ot.label}</span>
+                    ${isOOS ? '<span class="badge" style="background:rgba(245,158,11,0.15);color:#fbbf24;margin-left:4px">Out-of-State</span>' : ''}
                 </div>
                 <div class="popup-body">
                     <div class="popup-section">
                         <div class="popup-section-title">Property</div>
                         <div class="popup-row"><span class="label">Acres</span><span class="value">${acres}</span></div>
+                        <div class="popup-row"><span class="label">Type</span><span class="value">${p.PropType || '--'}</span></div>
                         <div class="popup-row"><span class="label">Address</span><span class="value">${p.AddressLine1 || '--'}</span></div>
-                        <div class="popup-row"><span class="label">Location</span><span class="value">${p.CityStateZip || '--'}</span></div>
+                        ${trs ? `<div class="popup-row"><span class="label">Twp/Rng/Sec</span><span class="value">${trs}</span></div>` : ''}
+                        ${legal ? `<div class="popup-row"><span class="label">Legal</span><span class="value" style="font-size:0.72rem;max-width:180px;word-wrap:break-word">${legal}</span></div>` : ''}
                     </div>
                     <div class="popup-section">
                         <div class="popup-section-title">Assessed Value</div>
                         <div class="popup-row"><span class="label">Total</span><span class="value">${value}</span></div>
+                        ${landValue ? `<div class="popup-row"><span class="label">Land</span><span class="value">${landValue}</span></div>` : ''}
                     </div>
+                    ${p.OwnerAddress1 ? `<div class="popup-section"><div class="popup-section-title">Owner Address</div><div style="font-size:0.78rem;color:var(--text-muted)">${p.OwnerAddress1}${p.OwnerCity ? '<br>' + p.OwnerCity + ', ' + (p.OwnerState || '') + ' ' + (p.OwnerZipCode || '') : ''}</div></div>` : ''}
                 </div>
             </div>
         `)
