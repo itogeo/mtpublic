@@ -23,6 +23,13 @@ const DNRC_TLMS_BASE = 'https://gis.dnrc.mt.gov/arcgis/rest/services/TLMD/TLMS/M
     '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image';
 const MSDI_HYDRO_BASE = 'https://gisservicemt.gov/arcgis/rest/services/MSDI_Framework/Hydrography/MapServer/export' +
     '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image';
+const DNRC_WRQS_BASE = 'https://gis.dnrc.mt.gov/arcgis/rest/services/WRD/WRQS/MapServer/export' +
+    '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image';
+
+function wrqsLayer(mapserverLayerId, where) {
+    const defs = where ? '&layerDefs=' + encodeURIComponent(JSON.stringify({[mapserverLayerId]: where})) : '';
+    return DNRC_WRQS_BASE + '&layers=show:' + mapserverLayerId + defs;
+}
 
 function msdiFiltered(ownerValues) {
     const where = ownerValues.map(v => `OWNER='${v}'`).join(' OR ');
@@ -87,6 +94,13 @@ const WATER_LAYERS = {
                    url: MSDI_HYDRO_BASE + '&layers=show:3' },
     waterbodies: { label: 'Lakes & Reservoirs',  color: '#0ea5e9', on: false,
                    url: MSDI_HYDRO_BASE + '&layers=show:5' },
+    // DNRC Water Rights — zoom in to see individual points (minScale 100k ≈ zoom 11)
+    wrqs_div:    { label: 'Water Diversions (all active)', color: '#e05c2a', on: false, minzoom: 10,
+                   url: wrqsLayer(1, "SOURCE_TYPE = 'SURFACE' AND WR_STATUS = 'ACTIVE'") },
+    wrqs_irr:    { label: 'Irrigation Claims only',        color: '#f59e0b', on: false, minzoom: 10,
+                   url: wrqsLayer(1, "SOURCE_TYPE = 'SURFACE' AND WR_STATUS = 'ACTIVE' AND PURPOSES LIKE '%IRRIGATION%'") },
+    wrqs_res:    { label: 'Dams & Reservoirs',             color: '#7c3aed', on: false, minzoom: 10,
+                   url: wrqsLayer(3, "WR_STATUS = 'ACTIVE'") },
 };
 
 const LAND_LABELS = {
@@ -274,13 +288,15 @@ function addAllLayers() {
             tileSize: 512,
         });
 
-        map.addLayer({
+        const waterLayerOpts = {
             id: 'water-' + key,
             type: 'raster',
             source: 'water-' + key,
-            paint: { 'raster-opacity': 0.8 },
+            paint: { 'raster-opacity': 0.85 },
             layout: { visibility: layer.on ? 'visible' : 'none' },
-        });
+        };
+        if (layer.minzoom) waterLayerOpts.minzoom = layer.minzoom;
+        map.addLayer(waterLayerOpts);
     }
 
     // === 3. CADASTRAL PARCELS (PMTiles vector tiles) ===
